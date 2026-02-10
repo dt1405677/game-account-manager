@@ -580,6 +580,69 @@ window.editAccount = function (id) {
     document.getElementById('accNote').value = acc.note;
 };
 
+window.openInventory = function (accId) {
+    currentAccountId = accId;
+    const acc = state.accounts.find(a => a.id === accId);
+    if (!acc) return;
+
+    // Populate modal
+    document.getElementById('invAccName').textContent = acc.name;
+    document.getElementById('invAccId').value = acc.id;
+    document.getElementById('invSilver').value = acc.inventory?.silver || 0;
+    document.getElementById('invNote').value = acc.inventory?.note || '';
+
+    // Show modal
+    inventoryModal.classList.remove('hidden');
+
+    // Init OCR
+    setupOCR();
+};
+
+window.deleteAccount = function (id) {
+    if (!confirm('Xóa tài khoản này?')) return;
+    state.accounts = state.accounts.filter(a => a.id !== id);
+    currentAccountId = null;
+    saveState();
+
+    // Hide detail panel, show placeholder
+    const placeholder = document.getElementById('detailPlaceholder');
+    const content = document.getElementById('detailContent');
+    if (placeholder) placeholder.classList.remove('hidden');
+    if (content) content.classList.add('hidden');
+
+    render();
+};
+
+function setupOCR() {
+    // OCR setup for pasting images and extracting silver amount
+    const pasteArea = document.getElementById('ocrPasteArea');
+    const statusEl = document.getElementById('ocrStatus');
+    const silverInput = document.getElementById('invSilver');
+
+    if (!pasteArea || !statusEl || !silverInput) return;
+
+    pasteArea.addEventListener('paste', async (e) => {
+        const items = e.clipboardData?.items;
+        if (!items) return;
+
+        for (let i = 0; i < items.length; i++) {
+            if (items[i].type.indexOf('image') !== -1) {
+                e.preventDefault();
+                const blob = items[i].getAsFile();
+                statusEl.textContent = '⏳ Đang xử lý ảnh...';
+
+                // OCR processing would go here
+                // For now, just show a placeholder message
+                setTimeout(() => {
+                    statusEl.textContent = '⚠️ OCR chưa được cấu hình';
+                }, 1000);
+
+                break;
+            }
+        }
+    });
+}
+
 
 // --- Auth Logic ---
 window.toggleLogin = async function () {
