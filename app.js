@@ -8,6 +8,7 @@ let state = {
 };
 
 let currentUser = null;
+let cloudSyncDone = false; // Flag to prevent stale data upload race condition
 
 // Constants
 const STORAGE_KEY = 'game_account_manager_data';
@@ -240,8 +241,8 @@ function saveState() {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
     console.log('💾 Saved to local storage');
 
-    // If logged in, sync to Cloud (but NEVER upload empty data)
-    if (currentUser && state.accounts && state.accounts.length > 0) {
+    // If logged in, sync to Cloud (but NEVER upload empty data, and wait for cloud sync first)
+    if (currentUser && cloudSyncDone && state.accounts && state.accounts.length > 0) {
         const userId = currentUser.uid;
         set(ref(database, 'users/' + userId), state)
             .then(() => {
@@ -252,6 +253,8 @@ function saveState() {
                 console.error('Firebase sync error:', error);
                 updateSyncStatus('error', 'Lỗi đồng bộ');
             });
+    } else if (currentUser && !cloudSyncDone) {
+        console.log('⏳ Waiting for cloud sync before uploading...');
     } else if (currentUser) {
         console.warn('⚠️ Skipped cloud sync: no accounts to upload');
     }
@@ -958,11 +961,13 @@ async function init() {
                             });
 
                             state.accounts.forEach(migrateAccountTasks);
+                            cloudSyncDone = true;
                             checkDailyReset();
                             render();
                             console.log(`✅ Loaded ${state.accounts.length} accounts from cloud`);
                         } else {
                             console.log('ℹ️ Cloud has no valid accounts');
+                            cloudSyncDone = true;
                             // If local has data, upload it to restore cloud
                             if (state.accounts && state.accounts.length > 0) {
                                 console.log('📤 Uploading local data to restore cloud...');
@@ -971,13 +976,16 @@ async function init() {
                         }
                     } else {
                         console.log('ℹ️ New cloud user, uploading local data');
+                        cloudSyncDone = true;
                         saveState();
                     }
                 } catch (err) {
+                    cloudSyncDone = true; // Allow saves even on error
                     console.error('❌ Cloud data processing error:', err);
                     alert('Lỗi xử lý data: ' + err.message);
                 }
             }).catch((error) => {
+                cloudSyncDone = true; // Allow saves even on error
                 console.error('❌ Firebase get error:', error);
                 alert('Lỗi tải data: ' + error.message);
             });
