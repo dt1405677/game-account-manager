@@ -655,8 +655,12 @@ window.selectAccount = function (id) {
     const sidebarItem = document.querySelector(`.sidebar-item[onclick="selectAccount(${id})"]`);
     if (sidebarItem) sidebarItem.classList.add('active');
 
-    // Show detail panel
-    detailPanel.classList.add('active');
+    // Show detail panel, hide placeholder
+    const placeholder = document.getElementById('detailPlaceholder');
+    const content = document.getElementById('detailContent');
+    if (placeholder) placeholder.classList.add('hidden');
+    if (content) content.classList.remove('hidden');
+
     renderDetail(id);
 };
 
