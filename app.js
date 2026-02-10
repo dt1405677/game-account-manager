@@ -97,7 +97,7 @@ async function loadDaTauFromFiles() {
         const [chisoText, tichluyText, vatphamText] = await Promise.all([
             chisoRes.text(),
             tichluyRes.text(),
-            vatphamText.text()
+            vatphamRes.text()
         ]);
 
         return [
@@ -415,7 +415,7 @@ if (closeModalBtn) closeModalBtn.addEventListener('click', closeModal);
 if (closeInvBtn) closeInvBtn.addEventListener('click', closeInventoryModal);
 
 function openModal() {
-    modal.classList.add('active');
+    modal.classList.remove('hidden');
 
     document.getElementById('modalTitle').textContent = 'Thêm Tài Khoản';
     document.getElementById('accId').value = ''; // Reset ID
@@ -425,11 +425,11 @@ function openModal() {
 }
 
 function closeModal() {
-    modal.classList.remove('active');
+    modal.classList.add('hidden');
 }
 
 function closeInventoryModal() {
-    inventoryModal.classList.remove('active');
+    inventoryModal.classList.add('hidden');
 }
 
 function openInventory(accId) {
@@ -443,7 +443,7 @@ function openInventory(accId) {
 
     // Render specific items (omitted for brevity, keeping existing logic if needed)
 
-    inventoryModal.classList.add('active');
+    inventoryModal.classList.remove('hidden');
 
     // Init OCR
     setupOCR();
