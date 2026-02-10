@@ -393,7 +393,7 @@ function checkDailyReset() {
 // --- DOM Elements ---
 const modal = document.getElementById('accountModal');
 const inventoryModal = document.getElementById('inventoryModal');
-const openModalBtn = document.getElementById('newAccountBtn');
+const openModalBtn = document.getElementById('addAccountBtn');
 const closeModalBtn = document.getElementById('closeModal');
 const closeInvBtn = document.getElementById('closeInventory');
 const accountForm = document.getElementById('accountForm');
@@ -410,8 +410,13 @@ const sidebarSearch = document.getElementById('sidebarSearch');
 let currentAccountId = null; // For editing/viewing details
 
 // --- Event Listeners ---
+if (openModalBtn) openModalBtn.addEventListener('click', openModal);
+if (closeModalBtn) closeModalBtn.addEventListener('click', closeModal);
+if (closeInvBtn) closeInvBtn.addEventListener('click', closeInventoryModal);
+
 function openModal() {
     modal.classList.add('active');
+
     document.getElementById('modalTitle').textContent = 'Thêm Tài Khoản';
     document.getElementById('accId').value = ''; // Reset ID
     document.getElementById('accName').value = '';
