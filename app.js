@@ -337,22 +337,6 @@ function closeInventoryModal() {
     inventoryModal.classList.add('hidden');
 }
 
-function openInventory(accId) {
-    currentAccountId = accId;
-    const acc = state.accounts.find(a => a.id === accId);
-    if (!acc) return;
-
-    // Populate
-    document.getElementById('invSilver').value = acc.inventory.silver;
-    document.getElementById('invNote').value = acc.inventory.note;
-
-    // Render specific items (omitted for brevity, keeping existing logic if needed)
-
-    inventoryModal.classList.remove('hidden');
-
-    // Init OCR
-    setupOCR();
-}
 
 accountForm.addEventListener('submit', (e) => {
     e.preventDefault();
