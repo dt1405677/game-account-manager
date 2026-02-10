@@ -626,8 +626,12 @@ function updateTotalStats() {
 function renderSidebar() {
     sidebarList.innerHTML = '';
 
-    // Sort logic? Default by creation or name. Let's keep input order.
-    state.accounts.forEach(acc => {
+    // Sort accounts alphabetically by name
+    const sortedAccounts = [...state.accounts].sort((a, b) =>
+        a.name.localeCompare(b.name, 'vi')
+    );
+
+    sortedAccounts.forEach(acc => {
         const { progress } = calcProgress(acc);
 
         const item = document.createElement('div');
