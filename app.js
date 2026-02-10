@@ -597,36 +597,6 @@ window.deleteAccount = function (id) {
     render();
 };
 
-function setupOCR() {
-    // OCR setup for pasting images and extracting silver amount
-    const pasteArea = document.getElementById('ocrPasteArea');
-    const statusEl = document.getElementById('ocrStatus');
-    const silverInput = document.getElementById('invSilver');
-
-    if (!pasteArea || !statusEl || !silverInput) return;
-
-    pasteArea.addEventListener('paste', async (e) => {
-        const items = e.clipboardData?.items;
-        if (!items) return;
-
-        for (let i = 0; i < items.length; i++) {
-            if (items[i].type.indexOf('image') !== -1) {
-                e.preventDefault();
-                const blob = items[i].getAsFile();
-                statusEl.textContent = '⏳ Đang xử lý ảnh...';
-
-                // OCR processing would go here
-                // For now, just show a placeholder message
-                setTimeout(() => {
-                    statusEl.textContent = '⚠️ OCR chưa được cấu hình';
-                }, 1000);
-
-                break;
-            }
-        }
-    });
-}
-
 
 // --- Auth Logic ---
 window.toggleLogin = async function () {
