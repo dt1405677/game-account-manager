@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="vi">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Debug - Dynamic Loading</title>
+    <style>
+        body {
+            font-family: 'Courier New', monospace;
+            background: #0f172a;
+            color: #e2e8f0;
+            padding: 2rem;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        h1 {
+            color: #2dd4bf;
+        }
+
+        .section {
+            background: #1e293b;
+            padding: 1.5rem;
+            margin: 1rem 0;
+            border-radius: 8px;
+            border: 1px solid #334155;
+        }
+
+        button {
+            background: #8b5cf6;
+            color: white;
+            border: none;
+            padding: 0.5rem 1rem;
+            border-radius: 6px;
+            cursor: pointer;
+            margin: 0.5rem 0.5rem 0.5rem 0;
+            font-weight: 600;
+        }
+
+        button:hover {
+            background: #7c3aed;
+        }
+
+        button.danger {
+            background: #ef4444;
+        }
+
+        button.danger:hover {
+            background: #dc2626;
+        }
+
+        pre {
+            background: #0f172a;
+            padding: 1rem;
+            border-radius: 4px;
+            overflow-x: auto;
+        }
+
+        .success {
+            color: #22c55e;
+        }
+
+        .error {
+            color: #ef4444;
+        }
+
+        .warning {
+            color: #f59e0b;
+        }
+    </style>
+</head>
+
+<body>
+    <h1>🔍 Debug Dynamic Loading</h1>
+
+    <div class="section">
+        <h2>Step 1: Kiểm tra Server</h2>
+        <p>Bạn PHẢI chạy qua web server: <code>http://localhost:8000/test_debug.html</code></p>
+        <p>URL hiện tại: <span id="currentUrl"></span></p>
+        <p>Status: <span id="serverStatus"></span></p>
+    </div>
+
+    <div class="section">
+        <h2>Step 2: Test Load Files</h2>
+        <button onclick="testLoadFiles()">Test Load Files</button>
+        <pre id="fileLoadResult"></pre>
+    </div>
+
+    <div class="section">
+        <h2>Step 3: Clear LocalStorage</h2>
+        <p class="warning">⚠️ Cảnh báo: Xóa hết dữ liệu accounts!</p>
+        <button class="danger" onclick="clearStorage()">Clear Storage</button>
+        <p id="clearResult"></p>
+    </div>
+
+    <div class="section">
+        <h2>Step 4: View Current Data</h2>
+        <button onclick="viewData()">View LocalStorage</button>
+        <pre id="dataView"></pre>
+    </div>
+
+    <script>
+        // Check current URL
+        document.getElementById('currentUrl').textContent = window.location.href;
+        const isLocalhost = window.location.protocol === 'http:' && window.location.hostname === 'localhost';
+        const statusEl = document.getElementById('serverStatus');
+        if (isLocalhost) {
+            statusEl.innerHTML = '<span class="success">✅ OK - Running on web server</span>';
+        } else {
+            statusEl.innerHTML = '<span class="error">❌ ERROR - Must use http://localhost:8000</span>';
+        }
+
+        async function testLoadFiles() {
+            const result = document.getElementById('fileLoadResult');
+            result.textContent = 'Loading...';
+
+            try {
+                const [chiso, tichluy, vatpham] = await Promise.all([
+                    fetch('chiso.txt').then(r => r.text()),
+                    fetch('tichluy.txt').then(r => r.text()),
+                    fetch('vatpham.txt').then(r => r.text())
+                ]);
+
+                const parse = (text) => text.split('\n').map(l => l.trim()).filter(l => l);
+
+                result.textContent = JSON.stringify({
+                    chiso: parse(chiso),
+                    tichluy: parse(tichluy),
+                    vatpham: parse(vatpham)
+                }, null, 2);
+            } catch (error) {
+                result.textContent = '❌ Error: ' + error.message;
+            }
+        }
+
+        function clearStorage() {
+            if (confirm('Xóa HẾT dữ liệu tài khoản? Không thể undo!')) {
+                localStorage.removeItem('game_account_manager_data');
+                document.getElementById('clearResult').innerHTML = '<span class="success">✅ Cleared! Bây giờ refresh index.html</span>';
+            }
+        }
+
+        function viewData() {
+            const data = localStorage.getItem('game_account_manager_data');
+            const view = document.getElementById('dataView');
+            if (data) {
+                try {
+                    const parsed = JSON.parse(data);
+                    view.textContent = JSON.stringify(parsed, null, 2);
+                } catch (e) {
+                    view.textContent = '❌ Invalid JSON: ' + e.message;
+                }
+            } else {
+                view.textContent = '(empty)';
+            }
+        }
+    </script>
+</body>
+
+</html>

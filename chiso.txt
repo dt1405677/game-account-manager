@@ -1,0 +1,13 @@
+Xem Chỉ Số
+   Thân Pháp 1-5
+   Thân Pháp 6-10
+   Sức Mạnh 1-5
+   Sức Mạnh 6-10
+   Sinh Khí 1-5
+   Sinh Khí 6-10
+   Thể Lực 1-50
+   Thể Lực 51-100
+   Sinh Lực 1-50
+   Sinh Lực 51-100
+   Nội Lực 1-50
+   Nội Lực 51-100

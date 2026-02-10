@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Game Account Manager</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <script src='https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js'></script>
+</head>
+
+<body>
+    <div class="app-layout">
+        <!-- SIDEBAR -->
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <h1>⚔️ GAM</h1>
+                <div class="sidebar-stats">
+                    <span class="stat-chip">💰 <span id="totalSilver">0</span> vạn</span>
+                    <span class="stat-chip">👤 <span id="totalAccounts">0</span></span>
+                    <button class="stat-chip search-toggle" onclick="toggleSearch()" title="Tìm vật phẩm">🔍
+                        Tìm</button>
+                </div>
+            </div>
+            <div class="sidebar-actions">
+                <input type="text" id="sidebarSearch" class="sidebar-search" placeholder="🔍 Tìm tài khoản..."
+                    oninput="filterSidebar()">
+                <button id="addAccountBtn" class="btn primary-btn sidebar-add-btn">+ Thêm</button>
+            </div>
+            <div class="sidebar-data-actions">
+                <button class="data-btn" onclick="exportData()" title="Tải về file backup dữ liệu">⬇️ Backup</button>
+                <button class="data-btn" onclick="document.getElementById('importFile').click()"
+                    title="Nạp dữ liệu từ file backup">⬆️ Restore</button>
+                <input type="file" id="importFile" accept=".json" style="display:none" onchange="importData(event)">
+            </div>
+            <div class="sidebar-list" id="sidebarList">
+                <!-- Account rows injected here -->
+            </div>
+        </aside>
+
+        <!-- MAIN DETAIL PANEL -->
+        <main class="detail-panel" id="detailPanel">
+            <!-- Default: Dashboard overview -->
+            <div class="detail-placeholder" id="detailPlaceholder">
+                <div class="placeholder-icon">📋</div>
+                <p>Chọn một tài khoản để xem chi tiết</p>
+            </div>
+            <div class="detail-content hidden" id="detailContent">
+                <!-- Filled dynamically -->
+            </div>
+        </main>
+    </div>
+
+    <!-- Collapsible Search Panel (for inventory search) -->
+    <div id="searchPanel" class="search-panel hidden">
+        <div class="search-panel-header">
+            <h3>🔍 Tìm vật phẩm</h3>
+            <button class="search-close-btn" onclick="toggleSearch()" title="Đóng">✕</button>
+        </div>
+        <div class="search-mode-toggle">
+            <button class="search-mode-btn active" onclick="setSearchMode('dropdown')" id="searchModeDropdown">📋 Danh
+                sách</button>
+            <button class="search-mode-btn" onclick="setSearchMode('keyword')" id="searchModeKeyword">🔍 Từ
+                khóa</button>
+        </div>
+        <div class="search-input-area">
+            <select id="searchDropdown" class="search-select" onchange="searchItems()">
+                <option value="">-- Chọn vật phẩm để tìm --</option>
+                <option value="Thân Pháp 1-5">Thân Pháp 1-5</option>
+                <option value="Thân Pháp 6-10">Thân Pháp 6-10</option>
+                <option value="Sức Mạnh 1-5">Sức Mạnh 1-5</option>
+                <option value="Sức Mạnh 6-10">Sức Mạnh 6-10</option>
+                <option value="Sinh Khí 1-5">Sinh Khí 1-5</option>
+                <option value="Sinh Khí 6-10">Sinh Khí 6-10</option>
+                <option value="Thể Lực 1-50">Thể Lực 1-50</option>
+                <option value="Thể Lực 51-100">Thể Lực 51-100</option>
+                <option value="Sinh Lực 1-50">Sinh Lực 1-50</option>
+                <option value="Sinh Lực 51-100">Sinh Lực 51-100</option>
+                <option value="Nội Lực 1-50">Nội Lực 1-50</option>
+                <option value="Nội Lực 51-100">Nội Lực 51-100</option>
+            </select>
+            <input type="text" id="searchKeyword" class="search-input hidden" placeholder="Nhập tên vật phẩm..."
+                oninput="searchItems()">
+        </div>
+        <div id="searchResults" class="search-results hidden"></div>
+    </div>
+
+    <!-- Account Modal -->
+    <div id="accountModal" class="modal hidden">
+        <div class="modal-content">
+            <h2 id="modalTitle">Add Account</h2>
+            <form id="accountForm">
+                <div class="form-group">
+                    <label for="accName">Account Name</label>
+                    <input type="text" id="accName" required placeholder="e.g. Main Acc - Server Asia">
+                </div>
+                <div class="form-group">
+                    <label for="charName">Character Name</label>
+                    <input type="text" id="charName" placeholder="e.g. DragonSlayer99">
+                </div>
+                <div class="form-group">
+                    <label for="accNote">Note</label>
+                    <input type="text" id="accNote" placeholder="e.g. Login via Google">
+                </div>
+                <div class="form-actions">
+                    <button type="button" class="btn cancel-btn" id="closeModal">Cancel</button>
+                    <button type="submit" class="btn save-btn">Save</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Inventory Modal -->
+    <div id="inventoryModal" class="modal hidden">
+        <div class="modal-content">
+            <h2>🎒 Kho đồ - <span id="invAccName"></span></h2>
+            <form id="inventoryForm">
+                <input type="hidden" id="invAccId">
+                <div class="inv-section">
+                    <h3>💰 Tiền tệ</h3>
+                    <div class="ocr-paste-area" id="ocrPasteArea" tabindex="0">
+                        <span id="ocrStatus">📸 Nhấn vào đây & dán ảnh (Ctrl+V) để tự điền số Bạc</span>
+                    </div>
+                    <div class="inv-row">
+                        <label>Bạc</label>
+                        <div class="inv-input-unit">
+                            <input type="number" id="invSilver" min="0" placeholder="0">
+                            <span class="inv-unit">vạn</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="inv-section">
+                    <h3>📦 Tài sản</h3>
+                    <div id="invItemsList"></div>
+                    <div class="inv-add-preset">
+                        <select id="presetItemSelect">
+                            <option value="">-- Chọn từ danh sách --</option>
+                            <option value="Thân Pháp 1-5">Thân Pháp 1-5</option>
+                            <option value="Thân Pháp 6-10">Thân Pháp 6-10</option>
+                            <option value="Sức Mạnh 1-5">Sức Mạnh 1-5</option>
+                            <option value="Sức Mạnh 6-10">Sức Mạnh 6-10</option>
+                            <option value="Sinh Khí 1-5">Sinh Khí 1-5</option>
+                            <option value="Sinh Khí 6-10">Sinh Khí 6-10</option>
+                            <option value="Thể Lực 1-50">Thể Lực 1-50</option>
+                            <option value="Thể Lực 51-100">Thể Lực 51-100</option>
+                            <option value="Sinh Lực 1-50">Sinh Lực 1-50</option>
+                            <option value="Sinh Lực 51-100">Sinh Lực 51-100</option>
+                            <option value="Nội Lực 1-50">Nội Lực 1-50</option>
+                            <option value="Nội Lực 51-100">Nội Lực 51-100</option>
+                        </select>
+                        <button type="button" class="btn primary-btn" onclick="addPresetItem()"
+                            style="padding: 0.4rem 0.8rem;">+</button>
+                    </div>
+                    <div class="inv-add-item">
+                        <input type="text" id="newItemName" placeholder="Hoặc nhập tên tùy chỉnh...">
+                        <input type="number" id="newItemQty" min="0" placeholder="SL" style="width: 80px;">
+                        <button type="button" class="btn primary-btn" onclick="addInventoryItem()"
+                            style="padding: 0.4rem 0.8rem;">+</button>
+                    </div>
+                </div>
+                <div class="inv-section">
+                    <h3>⚔️ Trang bị / Ghi chú</h3>
+                    <textarea id="invNote" rows="3" placeholder="VD: Kiếm +15, Giáp +10..."></textarea>
+                </div>
+                <div class="form-actions">
+                    <button type="button" class="btn cancel-btn" id="closeInventory">Đóng</button>
+                    <button type="submit" class="btn save-btn">Lưu</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+
+</html>
