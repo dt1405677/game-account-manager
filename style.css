@@ -346,6 +346,45 @@ body {
     border-color: #ef4444;
 }
 
+/* Detail Stats Grid */
+.detail-stats {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+}
+
+.stat-card {
+    background: rgba(139, 92, 246, 0.08);
+    border: 1px solid rgba(139, 92, 246, 0.2);
+    border-radius: 8px;
+    padding: 1rem 1.2rem;
+}
+
+.stat-card h3 {
+    font-size: 0.75rem;
+    font-weight: 500;
+    color: var(--text-muted);
+    margin-bottom: 0.5rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.stat-card p {
+    font-size: 1.3rem;
+    font-weight: 700;
+    color: var(--text-main);
+}
+
+.stat-card.actions {
+    background: transparent;
+    border: none;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+}
+
 /* Detail Body Grid */
 .detail-body {
     display: grid;
@@ -504,6 +543,37 @@ body {
     background-color: #0f172a;
     color: #e2e8f0;
     padding: 0.5rem;
+}
+
+/* Task Cards */
+.task-card {
+    background: var(--card-bg);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    border-radius: 8px;
+    margin-bottom: 1rem;
+    overflow: hidden;
+}
+
+.task-header {
+    padding: 0.75rem 1rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+    background: rgba(139, 92, 246, 0.05);
+}
+
+.task-header span {
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: var(--text-main);
+}
+
+.task-body {
+    padding: 1rem;
+}
+
+.task-body.inline-tasks {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+    gap: 0.5rem;
 }
 
 /* Inline task buttons (Sát Thủ) */
