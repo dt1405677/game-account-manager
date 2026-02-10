@@ -648,9 +648,9 @@ function updateTotalStats() {
 function renderSidebar() {
     sidebarList.innerHTML = '';
 
-    // Sort accounts alphabetically by name
+    // Sort accounts with natural number ordering (9 → 10 → 11...)
     const sortedAccounts = [...state.accounts].sort((a, b) =>
-        a.name.localeCompare(b.name, 'vi')
+        a.name.localeCompare(b.name, 'vi', { numeric: true })
     );
 
     sortedAccounts.forEach(acc => {
