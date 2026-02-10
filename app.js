@@ -963,6 +963,11 @@ async function init() {
                             console.log(`✅ Loaded ${state.accounts.length} accounts from cloud`);
                         } else {
                             console.log('ℹ️ Cloud has no valid accounts');
+                            // If local has data, upload it to restore cloud
+                            if (state.accounts && state.accounts.length > 0) {
+                                console.log('📤 Uploading local data to restore cloud...');
+                                saveState();
+                            }
                         }
                     } else {
                         console.log('ℹ️ New cloud user, uploading local data');
