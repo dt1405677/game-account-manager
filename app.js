@@ -240,8 +240,8 @@ function saveState() {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
     console.log('💾 Saved to local storage');
 
-    // If logged in, sync to Cloud
-    if (currentUser) {
+    // If logged in, sync to Cloud (but NEVER upload empty data)
+    if (currentUser && state.accounts && state.accounts.length > 0) {
         const userId = currentUser.uid;
         set(ref(database, 'users/' + userId), state)
             .then(() => {
@@ -252,6 +252,8 @@ function saveState() {
                 console.error('Firebase sync error:', error);
                 updateSyncStatus('error', 'Lỗi đồng bộ');
             });
+    } else if (currentUser) {
+        console.warn('⚠️ Skipped cloud sync: no accounts to upload');
     }
 }
 
