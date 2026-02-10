@@ -676,6 +676,7 @@ function renderSidebar() {
             <div class="sidebar-item-info">
                 <div class="sidebar-item-name">${acc.name}</div>
                 ${acc.charName ? `<div class="sidebar-item-char">⚔️ ${acc.charName}${acc.checkedIn ? ' <span class="checkin-badge">✓</span>' : ''}</div>` : ''}
+                ${acc.note ? `<div class="sidebar-item-note">📝 ${acc.note}</div>` : ''}
                 ${daTauQuests.length > 0 ? daTauQuests.map(q => `<div class="sidebar-item-quest">🏃 ${q}</div>`).join('') : ''}
             </div>
             <div class="sidebar-item-status">
