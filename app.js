@@ -919,11 +919,43 @@ async function init() {
                 if (snapshot.exists()) {
                     console.log('☁️ Data downloaded from cloud');
                     const cloudData = snapshot.val();
-                    if (cloudData.accounts) {
+
+                    // Firebase converts arrays to objects - convert back
+                    let accounts = cloudData.accounts;
+                    if (accounts && !Array.isArray(accounts)) {
+                        accounts = Object.values(accounts);
+                        console.log('🔄 Converted accounts from object to array');
+                    }
+
+                    if (accounts && accounts.length > 0) {
                         state = cloudData;
+                        state.accounts = accounts;
+
+                        // Fix tasks arrays inside each account (also converted by Firebase)
+                        state.accounts.forEach(acc => {
+                            if (acc.tasks && !Array.isArray(acc.tasks)) {
+                                acc.tasks = Object.values(acc.tasks);
+                            }
+                            // Fix children arrays inside each task
+                            if (acc.tasks) {
+                                acc.tasks.forEach(task => {
+                                    if (task.children && !Array.isArray(task.children)) {
+                                        task.children = Object.values(task.children);
+                                    }
+                                });
+                            }
+                            // Fix inventory items
+                            if (acc.inventory && acc.inventory.items && !Array.isArray(acc.inventory.items)) {
+                                acc.inventory.items = Object.values(acc.inventory.items);
+                            }
+                        });
+
                         state.accounts.forEach(migrateAccountTasks);
                         checkDailyReset();
                         render();
+                        console.log(`✅ Loaded ${state.accounts.length} accounts from cloud`);
+                    } else {
+                        console.log('ℹ️ Cloud data exists but no accounts, keeping local');
                     }
                 } else {
                     console.log('ℹ️ New cloud user, uploading local data');
