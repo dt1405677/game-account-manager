@@ -916,53 +916,63 @@ async function init() {
             // Load cloud data
             const userRef = ref(database, 'users/' + user.uid);
             get(userRef).then((snapshot) => {
-                if (snapshot.exists()) {
-                    console.log('☁️ Data downloaded from cloud');
-                    const cloudData = snapshot.val();
+                try {
+                    if (snapshot.exists()) {
+                        console.log('☁️ Data downloaded from cloud');
+                        const cloudData = snapshot.val();
+                        console.log('📦 Cloud data keys:', Object.keys(cloudData));
 
-                    // Firebase converts arrays to objects - convert back
-                    let accounts = cloudData.accounts;
-                    if (accounts && !Array.isArray(accounts)) {
-                        accounts = Object.values(accounts);
-                        console.log('🔄 Converted accounts from object to array');
-                    }
+                        // Firebase converts arrays to objects - convert back
+                        let accounts = cloudData.accounts;
+                        if (!accounts) {
+                            console.warn('⚠️ No accounts in cloud data');
+                            return;
+                        }
+                        if (!Array.isArray(accounts)) {
+                            accounts = Object.values(accounts);
+                            console.log('🔄 Converted accounts object→array');
+                        }
+                        // Filter null/undefined entries
+                        accounts = accounts.filter(a => a != null);
 
-                    if (accounts && accounts.length > 0) {
-                        state = cloudData;
-                        state.accounts = accounts;
+                        if (accounts.length > 0) {
+                            state = { accounts: accounts, backupDate: cloudData.backupDate || null };
 
-                        // Fix tasks arrays inside each account (also converted by Firebase)
-                        state.accounts.forEach(acc => {
-                            if (acc.tasks && !Array.isArray(acc.tasks)) {
-                                acc.tasks = Object.values(acc.tasks);
-                            }
-                            // Fix children arrays inside each task
-                            if (acc.tasks) {
+                            // Fix nested arrays
+                            state.accounts.forEach(acc => {
+                                if (!acc.tasks) acc.tasks = [];
+                                else if (!Array.isArray(acc.tasks)) {
+                                    acc.tasks = Object.values(acc.tasks).filter(t => t != null);
+                                }
                                 acc.tasks.forEach(task => {
                                     if (task.children && !Array.isArray(task.children)) {
-                                        task.children = Object.values(task.children);
+                                        task.children = Object.values(task.children).filter(c => c != null);
                                     }
                                 });
-                            }
-                            // Fix inventory items
-                            if (acc.inventory && acc.inventory.items && !Array.isArray(acc.inventory.items)) {
-                                acc.inventory.items = Object.values(acc.inventory.items);
-                            }
-                        });
+                                if (!acc.inventory) acc.inventory = { silver: 0, items: [], note: '' };
+                                else if (acc.inventory.items && !Array.isArray(acc.inventory.items)) {
+                                    acc.inventory.items = Object.values(acc.inventory.items).filter(i => i != null);
+                                }
+                            });
 
-                        state.accounts.forEach(migrateAccountTasks);
-                        checkDailyReset();
-                        render();
-                        console.log(`✅ Loaded ${state.accounts.length} accounts from cloud`);
+                            state.accounts.forEach(migrateAccountTasks);
+                            checkDailyReset();
+                            render();
+                            console.log(`✅ Loaded ${state.accounts.length} accounts from cloud`);
+                        } else {
+                            console.log('ℹ️ Cloud has no valid accounts');
+                        }
                     } else {
-                        console.log('ℹ️ Cloud data exists but no accounts, keeping local');
+                        console.log('ℹ️ New cloud user, uploading local data');
+                        saveState();
                     }
-                } else {
-                    console.log('ℹ️ New cloud user, uploading local data');
-                    saveState(); // Upload local data to cloud
+                } catch (err) {
+                    console.error('❌ Cloud data processing error:', err);
+                    alert('Lỗi xử lý data: ' + err.message);
                 }
             }).catch((error) => {
-                console.error('Error fetching cloud data', error);
+                console.error('❌ Firebase get error:', error);
+                alert('Lỗi tải data: ' + error.message);
             });
 
         } else {
