@@ -627,9 +627,9 @@ window.addPresetItem = function () {
         acc.inventory.items.push({ name: itemName, qty: 1 });
     }
 
-    renderInventoryItems(acc);
     select.selectedIndex = 0; // Reset dropdown
     saveState();
+    render(); // Update detail panel
 };
 
 // Add custom inventory item
@@ -648,12 +648,12 @@ window.addInventoryItem = function () {
     if (!acc.inventory.items) acc.inventory.items = [];
 
     acc.inventory.items.push({ name, qty });
-    renderInventoryItems(acc);
 
     // Clear inputs
     nameInput.value = '';
     qtyInput.value = '';
     saveState();
+    render(); // Update detail panel
 };
 
 // Remove inventory item by index
@@ -801,11 +801,7 @@ function renderDetail(accId) {
     detailTitle.textContent = acc.name;
     const { progress } = calcProgress(acc);
 
-    // Stats
-    const itemsDisplay = (acc.inventory?.items && acc.inventory.items.length > 0)
-        ? acc.inventory.items.slice(0, 5).map(item => `${item.name} x${item.qty || 1}`).join(', ') + (acc.inventory.items.length > 5 ? '...' : '')
-        : '---';
-
+    // Stats (removed items stat-card)
     detailStats.innerHTML = `
         <div class="stat-card">
             <h3>Nhân vật</h3>
@@ -818,10 +814,6 @@ function renderDetail(accId) {
         <div class="stat-card">
             <h3>Ngân lượng</h3>
             <p>${(acc.inventory?.silver || 0).toLocaleString()} vạn</p>
-        </div>
-        <div class="stat-card">
-            <h3>Vật phẩm</h3>
-            <p style="font-size:0.85rem; line-height:1.4">${itemsDisplay}</p>
         </div>
         <div class="stat-card actions">
              <button class="btn secondary-btn" onclick="openInventory(${acc.id})" style="width:100%; margin-bottom: 0.5rem">🎒 Hành trang</button>
@@ -904,6 +896,38 @@ function renderDetail(accId) {
         taskCard.appendChild(body);
         detailTasks.appendChild(taskCard);
     });
+
+    // Render Items Panel
+    const detailItems = document.getElementById('detailItems');
+    if (detailItems) {
+        if (!acc.inventory?.items || acc.inventory.items.length === 0) {
+            detailItems.innerHTML = `
+                <div class="task-card">
+                    <div class="task-header"><span>📦 Vật phẩm</span></div>
+                    <div class="task-body">
+                        <p style="opacity:0.6; font-size:0.9rem; margin:0">Chưa có vật phẩm</p>
+                    </div>
+                </div>
+            `;
+        } else {
+            const itemsHTML = acc.inventory.items.map((item, idx) => `
+                <label class="task-item" style="justify-content:space-between">
+                    <span style="flex:1">${item.name}</span>
+                    <span style="opacity:0.7; margin:0 0.5rem">x${item.qty || 1}</span>
+                    <button type="button" onclick="removeInventoryItem(${idx}); render();" class="btn delete-btn" style="padding:0.2rem 0.5rem; font-size:1.2rem">×</button>
+                </label>
+            `).join('');
+
+            detailItems.innerHTML = `
+                <div class="task-card">
+                    <div class="task-header"><span>📦 Vật phẩm (${acc.inventory.items.length})</span></div>
+                    <div class="task-body">
+                        ${itemsHTML}
+                    </div>
+                </div>
+            `;
+        }
+    }
 }
 
 // --- OCR Functionality (Simplified integration) ---
