@@ -582,8 +582,9 @@ window.openInventory = function (accId) {
     document.getElementById('invSilver').value = acc.inventory?.silver || 0;
     document.getElementById('invNote').value = acc.inventory?.note || '';
 
-    // Render existing items
-    renderInventoryItems(acc);
+    // Don't render items list in popup (displayed in detail panel instead)
+    const itemsList = document.getElementById('invItemsList');
+    itemsList.innerHTML = '<p style="opacity:0.6; font-size:0.9rem; margin:0">Vật phẩm hiển thị ở phần thông tin nhân vật</p>';
 
     // Show modal
     inventoryModal.classList.remove('hidden');
@@ -801,6 +802,10 @@ function renderDetail(accId) {
     const { progress } = calcProgress(acc);
 
     // Stats
+    const itemsDisplay = (acc.inventory?.items && acc.inventory.items.length > 0)
+        ? acc.inventory.items.slice(0, 5).map(item => `${item.name} x${item.qty || 1}`).join(', ') + (acc.inventory.items.length > 5 ? '...' : '')
+        : '---';
+
     detailStats.innerHTML = `
         <div class="stat-card">
             <h3>Nhân vật</h3>
@@ -813,6 +818,10 @@ function renderDetail(accId) {
         <div class="stat-card">
             <h3>Ngân lượng</h3>
             <p>${(acc.inventory?.silver || 0).toLocaleString()} vạn</p>
+        </div>
+        <div class="stat-card">
+            <h3>Vật phẩm</h3>
+            <p style="font-size:0.85rem; line-height:1.4">${itemsDisplay}</p>
         </div>
         <div class="stat-card actions">
              <button class="btn secondary-btn" onclick="openInventory(${acc.id})" style="width:100%; margin-bottom: 0.5rem">🎒 Hành trang</button>
