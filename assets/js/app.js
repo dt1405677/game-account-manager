@@ -10,6 +10,7 @@ let state = {
 let currentUser = null;
 let cloudSyncDone = false; // Flag to prevent stale data upload race condition
 let tempInventoryItems = []; // Temporary staging for items being added in modal
+let availableItems = []; // Items loaded from vatpham.txt for dropdown
 
 // Constants
 const STORAGE_KEY = 'game_account_manager_data';
@@ -77,6 +78,18 @@ function parseTxtFile(content) {
 
     // Skip first line (category name) and return rest
     return lines.slice(1).map(title => ({ title, completed: false }));
+}
+
+/**
+ * Parse vatpham.txt to get simple item list (without category)
+ */
+function parseItemList(content) {
+    const lines = content.split('\n')
+        .map(line => line.trim())
+        .filter(line => line.length > 0);
+
+    // Skip first line (category name) and return rest as simple strings
+    return lines.slice(1);
 }
 
 /**
@@ -389,8 +402,9 @@ inventoryForm.addEventListener('submit', (e) => {
     acc.inventory.silver = parseInt(document.getElementById('invSilver').value) || 0;
     acc.inventory.note = document.getElementById('invNote').value;
 
-    // Save temporary items to actual inventory
-    acc.inventory.items = tempInventoryItems;
+    // Merge temporary items with existing items (append new items)
+    if (!acc.inventory.items) acc.inventory.items = [];
+    acc.inventory.items = [...acc.inventory.items, ...tempInventoryItems];
 
     // Save
     saveState();
@@ -661,11 +675,14 @@ window.openInventory = function (accId) {
     document.getElementById('invSilver').value = acc.inventory?.silver || 0;
     document.getElementById('invNote').value = acc.inventory?.note || '';
 
-    // Load existing items into temp staging area
-    tempInventoryItems = acc.inventory?.items ? JSON.parse(JSON.stringify(acc.inventory.items)) : [];
+    // Start with empty temp items (only show new additions)
+    tempInventoryItems = [];
 
-    // Render the staging items
+    // Render the staging items (empty initially)
     renderStagingItems();
+
+    // Populate dropdown with available items
+    populateItemDropdown();
 
     // Show modal
     inventoryModal.classList.remove('hidden');
@@ -679,7 +696,7 @@ function renderStagingItems() {
     const itemsList = document.getElementById('invItemsList');
 
     if (!tempInventoryItems || tempInventoryItems.length === 0) {
-        itemsList.innerHTML = '<p style="opacity:0.6; font-size:0.9rem; margin:0">Chưa có vật phẩm</p>';
+        itemsList.innerHTML = '<p style="opacity:0.6; font-size:0.9rem; margin:0">Chưa có vật phẩm (thêm vật phẩm sẽ hiển thị ở đây)</p>';
         return;
     }
 
@@ -690,6 +707,23 @@ function renderStagingItems() {
             <button type="button" onclick="removeStagingItem(${idx})" class="btn delete-btn" style="padding:0.2rem 0.5rem; font-size:1.2rem">×</button>
         </div>
     `).join('');
+}
+
+// Populate dropdown with items from vatpham.txt
+function populateItemDropdown() {
+    const select = document.getElementById('presetItemSelect');
+    if (!select) return;
+
+    // Clear existing options except first (placeholder)
+    select.innerHTML = '<option value="">-- Chọn từ danh sách --</option>';
+
+    // Add items from availableItems
+    availableItems.forEach(itemName => {
+        const option = document.createElement('option');
+        option.value = itemName;
+        option.textContent = itemName;
+        select.appendChild(option);
+    });
 }
 
 // Add preset item from dropdown to staging
@@ -1192,6 +1226,20 @@ async function init() {
             loadState();
         }
     });
+
+    // Load items from vatpham.txt for dropdown
+    try {
+        const vatphamRes = await fetch('assets/data/vatpham.txt');
+        if (vatphamRes.ok) {
+            const vatphamText = await vatphamRes.text();
+            availableItems = parseItemList(vatphamText);
+            console.log(`✅ Loaded ${availableItems.length} items from vatpham.txt`);
+        } else {
+            console.warn('⚠️ Failed to load vatpham.txt');
+        }
+    } catch (error) {
+        console.warn('⚠️ Error loading vatpham.txt:', error);
+    }
 
     // Try to load Dã Tẩu tasks from txt files
     const daTauTasks = await loadDaTauFromFiles();
