@@ -667,15 +667,10 @@ window.openInventory = function (accId) {
     setupOCR();
 };
 
-// Helper function to show temporary feedback when adding items
+// Helper function to show feedback when adding items (persists until modal close)
 function showItemAddedFeedback(itemName, qty) {
     const itemsList = document.getElementById('invItemsList');
     itemsList.innerHTML = `<p style="color:#22c55e; font-size:0.9rem; margin:0.5rem 0">✅ Đã thêm: ${itemName} x${qty}</p>`;
-
-    // Clear feedback after 2 seconds
-    setTimeout(() => {
-        itemsList.innerHTML = '<p style="opacity:0.6; font-size:0.9rem; margin:0">Vật phẩm sẽ hiển thị ở card vật phẩm</p>';
-    }, 2000);
 }
 
 // Add preset item from dropdown
@@ -687,18 +682,10 @@ window.addPresetItem = function () {
     const acc = state.accounts.find(a => a.id === currentAccountId);
     if (!acc.inventory.items) acc.inventory.items = [];
 
-    // Check if exists, increment qty
-    const existing = acc.inventory.items.find(i => i.name === itemName);
-    let qty;
-    if (existing) {
-        existing.qty = (existing.qty || 1) + 1;
-        qty = existing.qty;
-    } else {
-        acc.inventory.items.push({ name: itemName, qty: 1 });
-        qty = 1;
-    }
+    // Always add as new item (don't merge duplicates)
+    acc.inventory.items.push({ name: itemName, qty: 1 });
 
-    showItemAddedFeedback(itemName, qty); // Show temporary feedback
+    showItemAddedFeedback(itemName, 1); // Show feedback
     select.selectedIndex = 0; // Reset dropdown
     saveState();
     render(); // Update detail panel
@@ -733,8 +720,8 @@ window.addInventoryItem = function () {
 window.removeInventoryItem = function (index) {
     const acc = state.accounts.find(a => a.id === currentAccountId);
     acc.inventory.items.splice(index, 1);
-    renderInventoryItems(acc);
     saveState();
+    render(); // Update detail panel immediately
 };
 
 
