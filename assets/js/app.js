@@ -523,7 +523,9 @@ window.toggleSearch = function () {
     const panel = document.getElementById('searchPanel');
     panel.classList.toggle('active');
     if (panel.classList.contains('active')) {
-        document.getElementById('searchItemInput').focus();
+        // Focus on the dropdown select element
+        const dropdown = document.getElementById('searchDropdown');
+        if (dropdown) dropdown.focus();
     }
 };
 
@@ -580,12 +582,87 @@ window.openInventory = function (accId) {
     document.getElementById('invSilver').value = acc.inventory?.silver || 0;
     document.getElementById('invNote').value = acc.inventory?.note || '';
 
+    // Render existing items
+    renderInventoryItems(acc);
+
     // Show modal
     inventoryModal.classList.remove('hidden');
 
     // Init OCR
     setupOCR();
 };
+
+// Helper function to render inventory items list
+function renderInventoryItems(acc) {
+    const itemsList = document.getElementById('invItemsList');
+    if (!acc.inventory || !acc.inventory.items || acc.inventory.items.length === 0) {
+        itemsList.innerHTML = '<p style="opacity:0.6; font-size:0.9rem; margin:0">Chưa có vật phẩm</p>';
+        return;
+    }
+
+    itemsList.innerHTML = acc.inventory.items.map((item, idx) => `
+        <div class="inv-item-row" style="display:flex; justify-content:space-between; align-items:center; padding:0.5rem; background:rgba(255,255,255,0.05); border-radius:4px; margin-bottom:0.3rem">
+            <span style="flex:1">${item.name}</span>
+            <span style="opacity:0.7; margin:0 0.5rem">x${item.qty || 1}</span>
+            <button type="button" onclick="removeInventoryItem(${idx})" class="btn delete-btn" style="padding:0.2rem 0.5rem; font-size:1.2rem">×</button>
+        </div>
+    `).join('');
+}
+
+// Add preset item from dropdown
+window.addPresetItem = function () {
+    const select = document.getElementById('presetItemSelect');
+    const itemName = select.value;
+    if (!itemName) return;
+
+    const acc = state.accounts.find(a => a.id === currentAccountId);
+    if (!acc.inventory.items) acc.inventory.items = [];
+
+    // Check if exists, increment qty
+    const existing = acc.inventory.items.find(i => i.name === itemName);
+    if (existing) {
+        existing.qty = (existing.qty || 1) + 1;
+    } else {
+        acc.inventory.items.push({ name: itemName, qty: 1 });
+    }
+
+    renderInventoryItems(acc);
+    select.selectedIndex = 0; // Reset dropdown
+    saveState();
+};
+
+// Add custom inventory item
+window.addInventoryItem = function () {
+    const nameInput = document.getElementById('newItemName');
+    const qtyInput = document.getElementById('newItemQty');
+    const name = nameInput.value.trim();
+    const qty = parseInt(qtyInput.value) || 1;
+
+    if (!name) {
+        alert('Vui lòng nhập tên vật phẩm');
+        return;
+    }
+
+    const acc = state.accounts.find(a => a.id === currentAccountId);
+    if (!acc.inventory.items) acc.inventory.items = [];
+
+    acc.inventory.items.push({ name, qty });
+    renderInventoryItems(acc);
+
+    // Clear inputs
+    nameInput.value = '';
+    qtyInput.value = '';
+    saveState();
+};
+
+// Remove inventory item by index
+window.removeInventoryItem = function (index) {
+    const acc = state.accounts.find(a => a.id === currentAccountId);
+    acc.inventory.items.splice(index, 1);
+    renderInventoryItems(acc);
+    saveState();
+};
+
 
 window.deleteAccount = function (id) {
     if (!confirm('Xóa tài khoản này?')) return;
