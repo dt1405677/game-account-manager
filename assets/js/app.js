@@ -582,9 +582,8 @@ window.openInventory = function (accId) {
     document.getElementById('invSilver').value = acc.inventory?.silver || 0;
     document.getElementById('invNote').value = acc.inventory?.note || '';
 
-    // Don't render items list in popup (displayed in detail panel instead)
-    const itemsList = document.getElementById('invItemsList');
-    itemsList.innerHTML = '<p style="opacity:0.6; font-size:0.9rem; margin:0">Vật phẩm hiển thị ở phần thông tin nhân vật</p>';
+    // Render items temporarily in popup for UX
+    renderInventoryItems(acc);
 
     // Show modal
     inventoryModal.classList.remove('hidden');
@@ -627,6 +626,7 @@ window.addPresetItem = function () {
         acc.inventory.items.push({ name: itemName, qty: 1 });
     }
 
+    renderInventoryItems(acc); // Show in popup temporarily
     select.selectedIndex = 0; // Reset dropdown
     saveState();
     render(); // Update detail panel
@@ -648,6 +648,7 @@ window.addInventoryItem = function () {
     if (!acc.inventory.items) acc.inventory.items = [];
 
     acc.inventory.items.push({ name, qty });
+    renderInventoryItems(acc); // Show in popup temporarily
 
     // Clear inputs
     nameInput.value = '';
