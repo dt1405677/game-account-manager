@@ -521,8 +521,8 @@ window.restoreData = function () {
 
 window.toggleSearch = function () {
     const panel = document.getElementById('searchPanel');
-    panel.classList.toggle('active');
-    if (panel.classList.contains('active')) {
+    panel.classList.toggle('hidden');
+    if (!panel.classList.contains('hidden')) {
         // Focus on the dropdown select element
         const dropdown = document.getElementById('searchDropdown');
         if (dropdown) dropdown.focus();
@@ -656,8 +656,9 @@ window.openInventory = function (accId) {
     document.getElementById('invSilver').value = acc.inventory?.silver || 0;
     document.getElementById('invNote').value = acc.inventory?.note || '';
 
-    // Render items temporarily in popup for UX
-    renderInventoryItems(acc);
+    // Show placeholder message instead of item list
+    const itemsList = document.getElementById('invItemsList');
+    itemsList.innerHTML = '<p style="opacity:0.6; font-size:0.9rem; margin:0">Vật phẩm sẽ hiển thị ở card vật phẩm</p>';
 
     // Show modal
     inventoryModal.classList.remove('hidden');
@@ -666,21 +667,15 @@ window.openInventory = function (accId) {
     setupOCR();
 };
 
-// Helper function to render inventory items list
-function renderInventoryItems(acc) {
+// Helper function to show temporary feedback when adding items
+function showItemAddedFeedback(itemName, qty) {
     const itemsList = document.getElementById('invItemsList');
-    if (!acc.inventory || !acc.inventory.items || acc.inventory.items.length === 0) {
-        itemsList.innerHTML = '<p style="opacity:0.6; font-size:0.9rem; margin:0">Chưa có vật phẩm</p>';
-        return;
-    }
+    itemsList.innerHTML = `<p style="color:#22c55e; font-size:0.9rem; margin:0.5rem 0">✅ Đã thêm: ${itemName} x${qty}</p>`;
 
-    itemsList.innerHTML = acc.inventory.items.map((item, idx) => `
-        <div class="inv-item-row" style="display:flex; justify-content:space-between; align-items:center; padding:0.5rem; background:rgba(255,255,255,0.05); border-radius:4px; margin-bottom:0.3rem">
-            <span style="flex:1">${item.name}</span>
-            <span style="opacity:0.7; margin:0 0.5rem">x${item.qty || 1}</span>
-            <button type="button" onclick="removeInventoryItem(${idx})" class="btn delete-btn" style="padding:0.2rem 0.5rem; font-size:1.2rem">×</button>
-        </div>
-    `).join('');
+    // Clear feedback after 2 seconds
+    setTimeout(() => {
+        itemsList.innerHTML = '<p style="opacity:0.6; font-size:0.9rem; margin:0">Vật phẩm sẽ hiển thị ở card vật phẩm</p>';
+    }, 2000);
 }
 
 // Add preset item from dropdown
@@ -694,13 +689,16 @@ window.addPresetItem = function () {
 
     // Check if exists, increment qty
     const existing = acc.inventory.items.find(i => i.name === itemName);
+    let qty;
     if (existing) {
         existing.qty = (existing.qty || 1) + 1;
+        qty = existing.qty;
     } else {
         acc.inventory.items.push({ name: itemName, qty: 1 });
+        qty = 1;
     }
 
-    renderInventoryItems(acc); // Show in popup temporarily
+    showItemAddedFeedback(itemName, qty); // Show temporary feedback
     select.selectedIndex = 0; // Reset dropdown
     saveState();
     render(); // Update detail panel
@@ -722,7 +720,7 @@ window.addInventoryItem = function () {
     if (!acc.inventory.items) acc.inventory.items = [];
 
     acc.inventory.items.push({ name, qty });
-    renderInventoryItems(acc); // Show in popup temporarily
+    showItemAddedFeedback(name, qty); // Show temporary feedback
 
     // Clear inputs
     nameInput.value = '';
