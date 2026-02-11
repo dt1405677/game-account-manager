@@ -9,6 +9,7 @@ let state = {
 
 let currentUser = null;
 let cloudSyncDone = false; // Flag to prevent stale data upload race condition
+let tempInventoryItems = []; // Temporary staging for items being added in modal
 
 // Constants
 const STORAGE_KEY = 'game_account_manager_data';
@@ -340,6 +341,7 @@ function closeModal() {
 
 function closeInventoryModal() {
     inventoryModal.classList.add('hidden');
+    tempInventoryItems = []; // Clear temp items when closing
 }
 
 
@@ -386,6 +388,9 @@ inventoryForm.addEventListener('submit', (e) => {
     // Update core inventory
     acc.inventory.silver = parseInt(document.getElementById('invSilver').value) || 0;
     acc.inventory.note = document.getElementById('invNote').value;
+
+    // Save temporary items to actual inventory
+    acc.inventory.items = tempInventoryItems;
 
     // Save
     saveState();
@@ -656,9 +661,11 @@ window.openInventory = function (accId) {
     document.getElementById('invSilver').value = acc.inventory?.silver || 0;
     document.getElementById('invNote').value = acc.inventory?.note || '';
 
-    // Show placeholder message instead of item list
-    const itemsList = document.getElementById('invItemsList');
-    itemsList.innerHTML = '<p style="opacity:0.6; font-size:0.9rem; margin:0">Vật phẩm sẽ hiển thị ở card vật phẩm</p>';
+    // Load existing items into temp staging area
+    tempInventoryItems = acc.inventory?.items ? JSON.parse(JSON.stringify(acc.inventory.items)) : [];
+
+    // Render the staging items
+    renderStagingItems();
 
     // Show modal
     inventoryModal.classList.remove('hidden');
@@ -667,31 +674,41 @@ window.openInventory = function (accId) {
     setupOCR();
 };
 
-// Helper function to show feedback when adding items (persists until modal close)
-function showItemAddedFeedback(itemName, qty) {
+// Helper function to render staging items in modal
+function renderStagingItems() {
     const itemsList = document.getElementById('invItemsList');
-    itemsList.innerHTML = `<p style="color:#22c55e; font-size:0.9rem; margin:0.5rem 0">✅ Đã thêm: ${itemName} x${qty}</p>`;
+
+    if (!tempInventoryItems || tempInventoryItems.length === 0) {
+        itemsList.innerHTML = '<p style="opacity:0.6; font-size:0.9rem; margin:0">Chưa có vật phẩm</p>';
+        return;
+    }
+
+    itemsList.innerHTML = tempInventoryItems.map((item, idx) => `
+        <div class="inv-item-row" style="display:flex; justify-content:space-between; align-items:center; padding:0.5rem; background:rgba(255,255,255,0.05); border-radius:4px; margin-bottom:0.3rem">
+            <span style="flex:1">${item.name}</span>
+            <span style="opacity:0.7; margin:0 0.5rem">x${item.qty || 1}</span>
+            <button type="button" onclick="removeStagingItem(${idx})" class="btn delete-btn" style="padding:0.2rem 0.5rem; font-size:1.2rem">×</button>
+        </div>
+    `).join('');
 }
 
-// Add preset item from dropdown
+// Add preset item from dropdown to staging
 window.addPresetItem = function () {
     const select = document.getElementById('presetItemSelect');
     const itemName = select.value;
     if (!itemName) return;
 
-    const acc = state.accounts.find(a => a.id === currentAccountId);
-    if (!acc.inventory.items) acc.inventory.items = [];
+    // Add to temp staging (each item is separate)
+    tempInventoryItems.push({ name: itemName, qty: 1 });
 
-    // Always add as new item (don't merge duplicates)
-    acc.inventory.items.push({ name: itemName, qty: 1 });
+    // Re-render staging list
+    renderStagingItems();
 
-    showItemAddedFeedback(itemName, 1); // Show feedback
-    select.selectedIndex = 0; // Reset dropdown
-    saveState();
-    render(); // Update detail panel
+    // Reset dropdown
+    select.selectedIndex = 0;
 };
 
-// Add custom inventory item
+// Add custom inventory item to staging
 window.addInventoryItem = function () {
     const nameInput = document.getElementById('newItemName');
     const qtyInput = document.getElementById('newItemQty');
@@ -703,20 +720,24 @@ window.addInventoryItem = function () {
         return;
     }
 
-    const acc = state.accounts.find(a => a.id === currentAccountId);
-    if (!acc.inventory.items) acc.inventory.items = [];
+    // Add to temp staging
+    tempInventoryItems.push({ name, qty });
 
-    acc.inventory.items.push({ name, qty });
-    showItemAddedFeedback(name, qty); // Show temporary feedback
+    // Re-render staging list
+    renderStagingItems();
 
     // Clear inputs
     nameInput.value = '';
     qtyInput.value = '';
-    saveState();
-    render(); // Update detail panel
 };
 
-// Remove inventory item by index
+// Remove staging item by index (in modal)
+window.removeStagingItem = function (index) {
+    tempInventoryItems.splice(index, 1);
+    renderStagingItems();
+};
+
+// Remove inventory item by index (from detail panel)
 window.removeInventoryItem = function (index) {
     const acc = state.accounts.find(a => a.id === currentAccountId);
     acc.inventory.items.splice(index, 1);
