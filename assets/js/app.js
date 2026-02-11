@@ -529,6 +529,80 @@ window.toggleSearch = function () {
     }
 };
 
+window.setSearchMode = function (mode) {
+    const dropdown = document.getElementById('searchDropdown');
+    const keyword = document.getElementById('searchKeyword');
+    const btnDropdown = document.getElementById('searchModeDropdown');
+    const btnKeyword = document.getElementById('searchModeKeyword');
+
+    if (mode === 'dropdown') {
+        dropdown.classList.remove('hidden');
+        keyword.classList.add('hidden');
+        btnDropdown.classList.add('active');
+        btnKeyword.classList.remove('active');
+    } else {
+        dropdown.classList.add('hidden');
+        keyword.classList.remove('hidden');
+        btnKeyword.classList.add('active');
+        btnDropdown.classList.remove('active');
+        keyword.focus();
+    }
+};
+
+window.searchItems = function () {
+    const mode = document.getElementById('searchDropdown').classList.contains('hidden') ? 'keyword' : 'dropdown';
+    const query = mode === 'dropdown'
+        ? document.getElementById('searchDropdown').value
+        : document.getElementById('searchKeyword').value.trim().toLowerCase();
+
+    const resultsDiv = document.getElementById('searchResults');
+
+    if (!query) {
+        resultsDiv.classList.add('hidden');
+        return;
+    }
+
+    // Search across all accounts
+    const results = [];
+    state.accounts.forEach(acc => {
+        if (acc.inventory?.items) {
+            acc.inventory.items.forEach(item => {
+                const match = mode === 'dropdown'
+                    ? item.name === query
+                    : item.name.toLowerCase().includes(query);
+
+                if (match) {
+                    results.push({
+                        accountName: acc.name,
+                        charName: acc.charName,
+                        itemName: item.name,
+                        qty: item.qty || 1
+                    });
+                }
+            });
+        }
+    });
+
+    if (results.length === 0) {
+        resultsDiv.innerHTML = '<p style="opacity:0.6; text-align:center; margin:1rem 0">Không tìm thấy vật phẩm</p>';
+        resultsDiv.classList.remove('hidden');
+    } else {
+        resultsDiv.innerHTML = `
+            <div style="margin-top:1rem">
+                <p style="font-size:0.85rem; opacity:0.7; margin-bottom:0.5rem">Tìm thấy ${results.length} kết quả:</p>
+                ${results.map(r => `
+                    <div style="padding:0.5rem; background:rgba(255,255,255,0.05); border-radius:6px; margin-bottom:0.3rem">
+                        <div style="font-weight:600">${r.accountName} ${r.charName ? `(${r.charName})` : ''}</div>
+                        <div style="font-size:0.85rem; opacity:0.8">${r.itemName} x${r.qty}</div>
+                    </div>
+                `).join('')}
+            </div>
+        `;
+        resultsDiv.classList.remove('hidden');
+    }
+};
+
+
 window.filterSidebar = function () {
     const term = sidebarSearch.value.toLowerCase();
     const items = document.querySelectorAll('.sidebar-item');
