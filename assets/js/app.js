@@ -85,9 +85,9 @@ function parseTxtFile(content) {
 async function loadDaTauFromFiles() {
     try {
         const [chisoRes, tichluyRes, vatphamRes] = await Promise.all([
-            fetch('chiso.txt'),
-            fetch('tichluy.txt'),
-            fetch('vatpham.txt')
+            fetch('assets/data/chiso.txt'),
+            fetch('assets/data/tichluy.txt'),
+            fetch('assets/data/vatpham.txt')
         ]);
 
         if (!chisoRes.ok || !tichluyRes.ok || !vatphamRes.ok) {

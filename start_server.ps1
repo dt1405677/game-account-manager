@@ -8,9 +8,11 @@ Write-Host ""
 $pythonCmd = $null
 if (Get-Command python -ErrorAction SilentlyContinue) {
     $pythonCmd = "python"
-} elseif (Get-Command python3 -ErrorAction SilentlyContinue) {
+}
+elseif (Get-Command python3 -ErrorAction SilentlyContinue) {
     $pythonCmd = "python3"
-} else {
+}
+else {
     Write-Host "❌ Python not found!" -ForegroundColor Red
     Write-Host "Please install Python from: https://www.python.org/downloads/" -ForegroundColor Yellow
     Write-Host ""
@@ -31,7 +33,7 @@ Write-Host "   2. Go to: http://localhost:8000/index.html" -ForegroundColor Whit
 Write-Host "   3. The app will load Dã Tẩu tasks from txt files" -ForegroundColor White
 Write-Host ""
 Write-Host "📝 To add new quests:" -ForegroundColor Yellow
-Write-Host "   - Edit chiso.txt, tichluy.txt, or vatpham.txt" -ForegroundColor White
+Write-Host "   - Edit assets/data/chiso.txt, tichluy.txt, or vatpham.txt" -ForegroundColor White
 Write-Host "   - Refresh the browser page" -ForegroundColor White
 Write-Host ""
 Write-Host "🛑 Press Ctrl+C to stop the server" -ForegroundColor Red

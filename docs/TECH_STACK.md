@@ -66,11 +66,25 @@
 
 ```
 GameAccountManager/
-├── index.html          # Main HTML structure
-├── style.css           # All styles (no preprocessor)
-├── app.js              # All application logic
-├── TECH_STACK.md       # This file
-└── agent_skill/        # Development documentation
+├── index.html              # Main HTML structure
+├── assets/
+│   ├── css/
+│   │   └── style.css       # All styles (no preprocessor)
+│   ├── js/
+│   │   ├── app.js          # All application logic
+│   │   └── firebase-config.js  # Firebase initialization
+│   └── data/
+│       ├── chiso.txt       # Dã Tẩu - Chỉ Số options
+│       ├── tichluy.txt     # Dã Tẩu - Tích Lũy options
+│       └── vatpham.txt     # Dã Tẩu - Vật Phẩm options
+├── docs/
+│   ├── TECH_STACK.md       # This file
+│   ├── README_DYNAMIC_LOADING.md
+│   ├── daily_logs/
+│   └── test_debug.html     # Debug tool
+├── README.md               # Project README
+├── start_server.ps1        # Local server launcher
+└── agent_skill/            # Development documentation
     └── SKILL.md
 ```
 

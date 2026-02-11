@@ -5,7 +5,7 @@ A simple, local-first web application to manage multiple game accounts, track da
 ## Features ✨
 - **Manage Multiple Accounts**: Track characters, notes, and progress individually.
 - **Daily Tasks**: Reset daily at midnight (except "Dã Tẩu").
-- **Dynamic "Dã Tẩu" Quests**: Load quests from simple text files (`chiso.txt`, `tichluy.txt`, `vatpham.txt`).
+- **Dynamic "Dã Tẩu" Quests**: Load quests from simple text files (`assets/data/chiso.txt`, `tichluy.txt`, `vatpham.txt`).
 - **Inventory Tracking**: Manage silver and items per account.
 - **OCR Support**: Paste screenshots to auto-fill silver amount.
 - **Data Export/Import**: Backup your data to JSON file.
@@ -51,7 +51,7 @@ python -m http.server 8000
 
 To add new quests without touching code:
 1. Go to your GitHub repository.
-2. Edit `chiso.txt`, `tichluy.txt`, or `vatpham.txt`.
+2. Edit `assets/data/chiso.txt`, `assets/data/tichluy.txt`, or `assets/data/vatpham.txt`.
 3. Add new lines for new quests.
 4. Click **Commit changes**.
 5. Wait ~1 minute, then refresh your deployed website.

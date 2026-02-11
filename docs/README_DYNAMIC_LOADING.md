@@ -20,7 +20,7 @@ Sau đó mở `http://localhost:8000/index.html`
 
 ## Thêm/Sửa Nhiệm Vụ Dã Tẩu
 
-### 📁 File chiso.txt
+### 📁 File assets/data/chiso.txt
 Định dạng:
 ```
 Xem Chỉ Số
@@ -31,7 +31,7 @@ Xem Chỉ Số
 - **Dòng đầu**: Tên danh mục (bỏ qua)
 - **Các dòng sau**: Tên nhiệm vụ (mỗi dòng 1 nhiệm vụ)
 
-### 📁 File tichluy.txt
+### 📁 File assets/data/tichluy.txt
 ```
 Tích Lũy
    5000 điểm Tống Kim
@@ -39,7 +39,7 @@ Tích Lũy
    ...
 ```
 
-### 📁 File vatpham.txt
+### 📁 File assets/data/vatpham.txt
 ```
 Vật Phẩm
    Kinh Bạch Ngọc Bội - Thổ (cấp 2)
@@ -51,14 +51,14 @@ Vật Phẩm
 
 ## ✨ Cách Thêm Nhiệm Vụ Mới
 
-1. Mở file tương ứng (chiso.txt / tichluy.txt / vatpham.txt)
+1. Mở file tương ứng (assets/data/chiso.txt / tichluy.txt / vatpham.txt)
 2. Thêm dòng mới với tên nhiệm vụ
 3. Lưu file
 4. **Refresh browser** (F5)
 5. ✅ Nhiệm vụ mới sẽ xuất hiện trong dropdown!
 
 ### Ví dụ:
-Thêm vào `chiso.txt`:
+Thêm vào `assets/data/chiso.txt`:
 ```
 Xem Chỉ Số
    Thân Pháp 1-5

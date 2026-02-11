@@ -76,7 +76,7 @@
 
     <div class="section">
         <h2>Step 1: Kiểm tra Server</h2>
-        <p>Bạn PHẢI chạy qua web server: <code>http://localhost:8000/test_debug.html</code></p>
+        <p>Bạn PHẢI chạy qua web server: <code>http://localhost:8000/docs/test_debug.html</code></p>
         <p>URL hiện tại: <span id="currentUrl"></span></p>
         <p>Status: <span id="serverStatus"></span></p>
     </div>
@@ -117,9 +117,9 @@
 
             try {
                 const [chiso, tichluy, vatpham] = await Promise.all([
-                    fetch('chiso.txt').then(r => r.text()),
-                    fetch('tichluy.txt').then(r => r.text()),
-                    fetch('vatpham.txt').then(r => r.text())
+                    fetch('../assets/data/chiso.txt').then(r => r.text()),
+                    fetch('../assets/data/tichluy.txt').then(r => r.text()),
+                    fetch('../assets/data/vatpham.txt').then(r => r.text())
                 ]);
 
                 const parse = (text) => text.split('\n').map(l => l.trim()).filter(l => l);
