@@ -11,6 +11,7 @@ let currentUser = null;
 let cloudSyncDone = false; // Flag to prevent stale data upload race condition
 let tempInventoryItems = []; // Temporary staging for items being added in modal
 let availableItems = []; // Items loaded from vatpham.txt for dropdown
+let availableChisoItems = []; // Items loaded from chiso.txt for dropdown
 
 // Constants
 const STORAGE_KEY = 'game_account_manager_data';
@@ -681,7 +682,8 @@ window.openInventory = function (accId) {
     // Render the staging items (empty initially)
     renderStagingItems();
 
-    // Populate dropdown with available items
+    // Populate dropdowns with available items
+    populateChisoDropdown();
     populateItemDropdown();
 
     // Show modal
@@ -725,6 +727,39 @@ function populateItemDropdown() {
         select.appendChild(option);
     });
 }
+
+// Populate chiso dropdown with items from chiso.txt
+function populateChisoDropdown() {
+    const select = document.getElementById('presetChisoSelect');
+    if (!select) return;
+
+    // Clear existing options except first (placeholder)
+    select.innerHTML = '<option value="">-- Chọn chỉ số --</option>';
+
+    // Add items from availableChisoItems
+    availableChisoItems.forEach(itemName => {
+        const option = document.createElement('option');
+        option.value = itemName;
+        option.textContent = itemName;
+        select.appendChild(option);
+    });
+}
+
+// Add preset chiso item from dropdown to staging
+window.addPresetChiso = function () {
+    const select = document.getElementById('presetChisoSelect');
+    const itemName = select.value;
+    if (!itemName) return;
+
+    // Add to temp staging (each item is separate)
+    tempInventoryItems.push({ name: itemName, qty: 1 });
+
+    // Re-render staging list
+    renderStagingItems();
+
+    // Reset dropdown
+    select.selectedIndex = 0;
+};
 
 // Add preset item from dropdown to staging
 window.addPresetItem = function () {
@@ -1226,6 +1261,20 @@ async function init() {
             loadState();
         }
     });
+
+    // Load items from chiso.txt for dropdown
+    try {
+        const chisoRes = await fetch('assets/data/chiso.txt');
+        if (chisoRes.ok) {
+            const chisoText = await chisoRes.text();
+            availableChisoItems = parseItemList(chisoText);
+            console.log(`✅ Loaded ${availableChisoItems.length} items from chiso.txt`);
+        } else {
+            console.warn('⚠️ Failed to load chiso.txt');
+        }
+    } catch (error) {
+        console.warn('⚠️ Error loading chiso.txt:', error);
+    }
 
     // Load items from vatpham.txt for dropdown
     try {
