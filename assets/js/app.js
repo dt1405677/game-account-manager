@@ -1185,20 +1185,13 @@ async function handlePaste(e) {
     }
 }
 
-// --- Item OCR Functionality ---
+// --- Item OCR Functionality (Enhanced) ---
 
 // Levenshtein distance for fuzzy matching
 function levenshteinDistance(a, b) {
     const matrix = [];
-
-    for (let i = 0; i <= b.length; i++) {
-        matrix[i] = [i];
-    }
-
-    for (let j = 0; j <= a.length; j++) {
-        matrix[0][j] = j;
-    }
-
+    for (let i = 0; i <= b.length; i++) matrix[i] = [i];
+    for (let j = 0; j <= a.length; j++) matrix[0][j] = j;
     for (let i = 1; i <= b.length; i++) {
         for (let j = 1; j <= a.length; j++) {
             if (b.charAt(i - 1) === a.charAt(j - 1)) {
@@ -1212,67 +1205,215 @@ function levenshteinDistance(a, b) {
             }
         }
     }
-
     return matrix[b.length][a.length];
 }
 
-// Normalize Vietnamese text for better matching
+// Strip Vietnamese diacritics to ASCII for fallback matching
+function stripDiacritics(str) {
+    const diacriticsMap = {
+        'à': 'a', 'á': 'a', 'ả': 'a', 'ã': 'a', 'ạ': 'a',
+        'ă': 'a', 'ằ': 'a', 'ắ': 'a', 'ẳ': 'a', 'ẵ': 'a', 'ặ': 'a',
+        'â': 'a', 'ầ': 'a', 'ấ': 'a', 'ẩ': 'a', 'ẫ': 'a', 'ậ': 'a',
+        'đ': 'd',
+        'è': 'e', 'é': 'e', 'ẻ': 'e', 'ẽ': 'e', 'ẹ': 'e',
+        'ê': 'e', 'ề': 'e', 'ế': 'e', 'ể': 'e', 'ễ': 'e', 'ệ': 'e',
+        'ì': 'i', 'í': 'i', 'ỉ': 'i', 'ĩ': 'i', 'ị': 'i',
+        'ò': 'o', 'ó': 'o', 'ỏ': 'o', 'õ': 'o', 'ọ': 'o',
+        'ô': 'o', 'ồ': 'o', 'ố': 'o', 'ổ': 'o', 'ỗ': 'o', 'ộ': 'o',
+        'ơ': 'o', 'ờ': 'o', 'ớ': 'o', 'ở': 'o', 'ỡ': 'o', 'ợ': 'o',
+        'ù': 'u', 'ú': 'u', 'ủ': 'u', 'ũ': 'u', 'ụ': 'u',
+        'ư': 'u', 'ừ': 'u', 'ứ': 'u', 'ử': 'u', 'ữ': 'u', 'ự': 'u',
+        'ỳ': 'y', 'ý': 'y', 'ỷ': 'y', 'ỹ': 'y', 'ỵ': 'y'
+    };
+    return str.toLowerCase().split('').map(c => diacriticsMap[c] || c).join('');
+}
+
+// Normalize text for matching (keeps diacritics)
 function normalizeText(text) {
     return text
         .toLowerCase()
         .trim()
         .replace(/\s+/g, ' ')
-        .replace(/[()\[\]{}]/g, '') // Remove brackets
-        .replace(/[.,;:!?]/g, '') // Remove punctuation
-        .replace(/[-–—]/g, ' '); // Replace dashes with space for better matching
+        .replace(/[()[\]{}]/g, '')
+        .replace(/[.,;:!?'"]/g, '')
+        .replace(/[-–—]/g, ' ');
 }
 
-// Match OCR text to available items with fuzzy matching
+// Extract key tokens from item name (for token-based matching)
+function extractTokens(text) {
+    return normalizeText(text)
+        .split(' ')
+        .filter(t => t.length > 1);
+}
+
+// Calculate token overlap ratio between two strings
+function tokenOverlapScore(a, b) {
+    const tokensA = extractTokens(a);
+    const tokensB = extractTokens(b);
+    if (tokensA.length === 0 || tokensB.length === 0) return 0;
+
+    let matchCount = 0;
+    for (const tokenA of tokensA) {
+        for (const tokenB of tokensB) {
+            // Exact token match or fuzzy token match (distance ≤ 1)
+            if (tokenA === tokenB || levenshteinDistance(tokenA, tokenB) <= 1) {
+                matchCount++;
+                break;
+            }
+        }
+    }
+    // Score = matched tokens / max tokens
+    return matchCount / Math.max(tokensA.length, tokensB.length);
+}
+
+// Preprocess image for better OCR (grayscale + contrast boost)
+function preprocessImage(blob) {
+    return new Promise((resolve) => {
+        const img = new Image();
+        img.onload = () => {
+            const canvas = document.createElement('canvas');
+            const ctx = canvas.getContext('2d');
+
+            // Scale up small images for better OCR
+            const scale = Math.max(1, Math.min(3, 2000 / Math.max(img.width, img.height)));
+            canvas.width = img.width * scale;
+            canvas.height = img.height * scale;
+
+            ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+
+            // Convert to grayscale and increase contrast
+            const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+            const data = imageData.data;
+
+            for (let i = 0; i < data.length; i += 4) {
+                // Grayscale: weighted average
+                const gray = data[i] * 0.299 + data[i + 1] * 0.587 + data[i + 2] * 0.114;
+
+                // Increase contrast (factor 1.5, centered at 128)
+                const contrast = 1.5;
+                const adjusted = Math.max(0, Math.min(255, ((gray - 128) * contrast) + 128));
+
+                // Threshold for cleaner text (binarize)
+                const threshold = adjusted > 140 ? 255 : 0;
+
+                data[i] = threshold;
+                data[i + 1] = threshold;
+                data[i + 2] = threshold;
+            }
+
+            ctx.putImageData(imageData, 0, 0);
+
+            canvas.toBlob(resolve, 'image/png');
+        };
+        img.src = URL.createObjectURL(blob);
+    });
+}
+
+// Multi-strategy matching: exact → contains → token → diacritics-stripped → fuzzy
 function matchOcrTextToItems(ocrText) {
     const lines = ocrText
         .split('\n')
         .map(line => line.trim())
-        .filter(line => line.length > 5); // Filter out very short lines
+        .filter(line => line.length > 3); // Keep lines with 4+ chars
 
     const results = [];
 
     for (const line of lines) {
         const normalizedLine = normalizeText(line);
+        const strippedLine = stripDiacritics(line);
         let bestMatch = null;
-        let bestDistance = Infinity;
-        let exactMatch = false;
+        let bestScore = 0;
+        let matchMethod = 'none';
 
-        // Try exact match first
+        // Strategy 1: Exact match (normalized)
         for (const item of availableItems) {
             const normalizedItem = normalizeText(item);
-
-            if (normalizedItem === normalizedLine || normalizedLine.includes(normalizedItem)) {
+            if (normalizedItem === normalizedLine) {
                 bestMatch = item;
-                exactMatch = true;
+                bestScore = 1.0;
+                matchMethod = 'exact';
                 break;
             }
         }
 
-        // If no exact match, try fuzzy matching
-        if (!exactMatch) {
+        // Strategy 2: Contains match (OCR line contains a known item or vice versa)
+        if (!bestMatch) {
             for (const item of availableItems) {
                 const normalizedItem = normalizeText(item);
-                const distance = levenshteinDistance(normalizedLine, normalizedItem);
-
-                // More lenient matching for Vietnamese OCR (≤ 8 or 40% of length)
-                const maxDistance = Math.max(8, Math.floor(normalizedItem.length * 0.4));
-                if (distance < bestDistance && distance <= maxDistance) {
-                    bestDistance = distance;
-                    bestMatch = item;
+                if (normalizedLine.includes(normalizedItem) || normalizedItem.includes(normalizedLine)) {
+                    // Prefer longer matches
+                    const score = normalizedItem.length / Math.max(normalizedLine.length, normalizedItem.length);
+                    if (score > bestScore && score > 0.5) {
+                        bestMatch = item;
+                        bestScore = score;
+                        matchMethod = 'contains';
+                    }
                 }
             }
         }
 
+        // Strategy 3: Token-based matching (compare individual words)
+        if (!bestMatch || bestScore < 0.7) {
+            for (const item of availableItems) {
+                const score = tokenOverlapScore(line, item);
+                if (score > bestScore && score >= 0.5) {
+                    bestMatch = item;
+                    bestScore = score;
+                    matchMethod = 'token';
+                }
+            }
+        }
+
+        // Strategy 4: Diacritics-stripped matching (fallback for OCR losing diacritics)
+        if (!bestMatch || bestScore < 0.7) {
+            for (const item of availableItems) {
+                const strippedItem = stripDiacritics(item);
+                // Stripped exact
+                if (strippedLine === strippedItem ||
+                    strippedLine.includes(strippedItem) ||
+                    strippedItem.includes(strippedLine)) {
+                    const score = strippedItem.length / Math.max(strippedLine.length, strippedItem.length);
+                    if (score > bestScore && score > 0.4) {
+                        bestMatch = item;
+                        bestScore = Math.max(0.6, score);
+                        matchMethod = 'stripped';
+                    }
+                }
+            }
+        }
+
+        // Strategy 5: Fuzzy Levenshtein (last resort)
+        if (!bestMatch || bestScore < 0.6) {
+            let bestDistance = Infinity;
+            for (const item of availableItems) {
+                const normalizedItem = normalizeText(item);
+                const distance = levenshteinDistance(normalizedLine, normalizedItem);
+                const maxDistance = Math.max(10, Math.floor(normalizedItem.length * 0.45));
+                if (distance < bestDistance && distance <= maxDistance) {
+                    bestDistance = distance;
+                    const fuzzyScore = 1 - (distance / Math.max(normalizedLine.length, normalizedItem.length));
+                    if (fuzzyScore > bestScore) {
+                        bestMatch = item;
+                        bestScore = fuzzyScore;
+                        matchMethod = 'fuzzy';
+                    }
+                }
+            }
+        }
+
+        // Only include if score is meaningful
+        const isMatched = bestMatch && bestScore >= 0.4;
+        const confidence = bestScore >= 0.9 ? 'exact'
+            : bestScore >= 0.7 ? 'high'
+                : bestScore >= 0.5 ? 'medium'
+                    : 'low';
+
         results.push({
             ocrText: line,
-            matchedItem: bestDistance <= 8 || exactMatch ? bestMatch : null,
-            confidence: exactMatch ? 'exact' : (bestDistance <= 3 ? 'high' : (bestDistance <= 6 ? 'medium' : 'low')),
-            distance: bestDistance
+            matchedItem: isMatched ? bestMatch : null,
+            confidence: confidence,
+            score: bestScore,
+            method: matchMethod
         });
     }
 
@@ -1281,22 +1422,11 @@ function matchOcrTextToItems(ocrText) {
 
 // Generate vatpham.txt format entry for unmatched item
 function generateVatphamEntry(itemName) {
-    // Check if the item name already has element/level info
-    const hasElementLevel = /-(Kim|Thủy|Mộc|Hỏa|Thổ)\s*\(cấp\s*\d+\)/i.test(itemName);
+    const hasElementLevel = /[-–]\s*(Kim|Thủy|Mộc|Hỏa|Thổ)\s*[\(\[]?\s*(cấp|cap)\s*\d+/i.test(itemName);
+    if (hasElementLevel) return itemName;
 
-    if (hasElementLevel) {
-        return itemName;
-    }
-
-    // Generate entries for all 5 elements at a default level
     const elements = ['Kim', 'Thủy', 'Mộc', 'Hỏa', 'Thổ'];
-    const entries = [];
-
-    for (const element of elements) {
-        entries.push(`${itemName} - ${element} (cấp 5)`);
-    }
-
-    return entries.join('\n');
+    return elements.map(el => `${itemName} - ${el} (cấp 5)`).join('\n');
 }
 
 // Render OCR item results
@@ -1312,23 +1442,21 @@ function renderOcrItemResults(results) {
 
     for (const result of results) {
         if (result.matchedItem) {
-            // Matched item
+            const scorePercent = Math.round(result.score * 100);
             html += `
                 <div class="ocr-result-item matched">
                     <span class="ocr-result-icon">✅</span>
                     <div class="ocr-result-text">
                         ${result.matchedItem}
-                        <small>Đã thêm vào danh sách${result.confidence === 'exact' ? '' : ` (khớp ${result.confidence})`}</small>
+                        <small>Đã thêm (${result.confidence}, ${scorePercent}%, ${result.method})</small>
                     </div>
                 </div>
             `;
 
-            // Auto-add to tempInventoryItems
             if (!tempInventoryItems.find(item => item.name === result.matchedItem)) {
                 tempInventoryItems.push({ name: result.matchedItem, qty: 1 });
             }
         } else {
-            // Unmatched item
             unmatchedItems.push(result.ocrText);
             html += `
                 <div class="ocr-result-item unmatched">
@@ -1342,7 +1470,6 @@ function renderOcrItemResults(results) {
         }
     }
 
-    // If there are unmatched items, show copyable text
     if (unmatchedItems.length > 0) {
         const copyableText = unmatchedItems.map(item => generateVatphamEntry(item)).join('\n');
         html += `
@@ -1360,27 +1487,26 @@ function renderOcrItemResults(results) {
 
     resultsDiv.innerHTML = html;
     resultsDiv.classList.remove('hidden');
-
-    // Refresh the staging items display
     renderStagingItems();
 }
 
 // Copy vatpham text to clipboard
-window.copyVatphamText = function () {
+window.copyVatphamText = function (e) {
     const textDiv = document.getElementById('copyableVatphamText');
     if (!textDiv) return;
 
     const text = textDiv.textContent;
     navigator.clipboard.writeText(text).then(() => {
-        const btn = event.target;
-        const originalText = btn.textContent;
-        btn.textContent = '✅ Đã copy!';
-        btn.style.background = 'rgba(34, 197, 94, 0.2)';
-
-        setTimeout(() => {
-            btn.textContent = originalText;
-            btn.style.background = '';
-        }, 2000);
+        const btn = e ? e.target : document.querySelector('.ocr-copy-btn');
+        if (btn) {
+            const originalText = btn.textContent;
+            btn.textContent = '✅ Đã copy!';
+            btn.style.background = 'rgba(34, 197, 94, 0.2)';
+            setTimeout(() => {
+                btn.textContent = originalText;
+                btn.style.background = '';
+            }, 2000);
+        }
     });
 };
 
@@ -1389,14 +1515,12 @@ function setupItemOCR() {
     const pasteArea = document.getElementById('itemOcrPasteArea');
     if (!pasteArea) return;
 
-    // Remove old listeners
     const newPasteArea = pasteArea.cloneNode(true);
     pasteArea.parentNode.replaceChild(newPasteArea, pasteArea);
-
     newPasteArea.addEventListener('paste', handleItemPaste);
 }
 
-// Handle item image paste
+// Handle item image paste (with preprocessing)
 async function handleItemPaste(e) {
     const items = e.clipboardData.items;
     let blob = null;
@@ -1414,24 +1538,34 @@ async function handleItemPaste(e) {
     const pasteArea = document.getElementById('itemOcrPasteArea');
 
     pasteArea.classList.add('processing');
-    statusSpan.innerHTML = '⏳ Đang đọc ảnh...';
+    statusSpan.innerHTML = '⏳ Đang xử lý ảnh...';
 
     try {
-        const result = await Tesseract.recognize(blob, 'vie', {
-            logger: m => {
-                if (m.status === 'recognizing text') {
-                    statusSpan.innerHTML = `⏳ Đang nhận diện... ${Math.round(m.progress * 100)}%`;
+        // Step 1: Preprocess image for better OCR
+        statusSpan.innerHTML = '🔄 Đang cải thiện ảnh...';
+        const processedBlob = await preprocessImage(blob);
+
+        // Step 2: Run OCR with optimized settings
+        const result = await Tesseract.recognize(
+            processedBlob,
+            'vie',
+            {
+                logger: m => {
+                    if (m.status === 'recognizing text') {
+                        statusSpan.innerHTML = `⏳ Đang nhận diện... ${Math.round(m.progress * 100)}%`;
+                    }
                 }
             }
-        });
+        );
 
         const rawText = result.data.text;
-        console.log('OCR Raw Text:', rawText);
+        console.log('📸 OCR Raw Text:', rawText);
+        console.log('📸 OCR Confidence:', result.data.confidence);
 
-        // Match against available items
+        // Step 3: Match against available items
         const matchResults = matchOcrTextToItems(rawText);
 
-        // Render results
+        // Step 4: Render results
         renderOcrItemResults(matchResults);
 
         pasteArea.classList.remove('processing');
@@ -1440,12 +1574,12 @@ async function handleItemPaste(e) {
         const matchedCount = matchResults.filter(r => r.matchedItem).length;
         const totalCount = matchResults.length;
 
-        statusSpan.innerHTML = `✅ Nhận diện: ${matchedCount}/${totalCount} vật phẩm`;
+        statusSpan.innerHTML = `✅ Nhận diện: ${matchedCount}/${totalCount} vật phẩm (OCR: ${Math.round(result.data.confidence)}%)`;
 
         setTimeout(() => {
             pasteArea.classList.remove('success');
             statusSpan.innerHTML = '📸 Dán ảnh vật phẩm (Ctrl+V) để tự nhận diện';
-        }, 3000);
+        }, 5000);
 
     } catch (err) {
         console.error('Item OCR Error:', err);
