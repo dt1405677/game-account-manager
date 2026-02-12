@@ -1022,6 +1022,88 @@ body {
     color: #22c55e;
 }
 
+/* Item OCR Results */
+.item-ocr-results {
+    margin-bottom: 1rem;
+    padding: 0.75rem;
+    border-radius: 8px;
+    background: rgba(0, 0, 0, 0.2);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.item-ocr-results.hidden {
+    display: none;
+}
+
+.ocr-result-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.4rem 0.6rem;
+    margin-bottom: 0.3rem;
+    border-radius: 6px;
+    font-size: 0.85rem;
+}
+
+.ocr-result-item.matched {
+    background: rgba(34, 197, 94, 0.1);
+    border: 1px solid rgba(34, 197, 94, 0.3);
+}
+
+.ocr-result-item.unmatched {
+    background: rgba(251, 191, 36, 0.1);
+    border: 1px solid rgba(251, 191, 36, 0.3);
+}
+
+.ocr-result-icon {
+    margin-right: 0.5rem;
+    font-size: 1rem;
+}
+
+.ocr-result-text {
+    flex: 1;
+    color: var(--text-main);
+}
+
+.ocr-result-text small {
+    display: block;
+    font-size: 0.75rem;
+    opacity: 0.7;
+    margin-top: 0.15rem;
+}
+
+.ocr-copy-btn {
+    padding: 0.3rem 0.6rem;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 4px;
+    background: rgba(255, 255, 255, 0.05);
+    color: var(--text-main);
+    cursor: pointer;
+    font-size: 0.75rem;
+    transition: all 0.2s;
+    font-family: inherit;
+}
+
+.ocr-copy-btn:hover {
+    background: rgba(139, 92, 246, 0.2);
+    border-color: var(--primary);
+}
+
+.ocr-copyable-text {
+    margin-top: 0.5rem;
+    padding: 0.5rem;
+    background: rgba(0, 0, 0, 0.3);
+    border: 1px dashed rgba(251, 191, 36, 0.4);
+    border-radius: 4px;
+    font-family: 'Courier New', monospace;
+    font-size: 0.8rem;
+    color: #fbbf24;
+    word-break: break-all;
+    max-height: 150px;
+    overflow-y: auto;
+}
+
+
 .save-btn {
     background-color: var(--primary);
     color: white;

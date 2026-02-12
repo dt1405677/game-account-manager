@@ -692,6 +692,7 @@ window.openInventory = function (accId) {
 
     // Init OCR
     setupOCR();
+    setupItemOCR(); // Initialize item OCR
 };
 
 // Helper function to render staging items in modal
@@ -1163,6 +1164,276 @@ async function handlePaste(e) {
         console.error('OCR Error:', err);
         ocrPasteArea.classList.remove('processing');
         ocrStatus.innerHTML = '❌ Lỗi đọc ảnh';
+    }
+}
+
+// --- Item OCR Functionality ---
+
+// Levenshtein distance for fuzzy matching
+function levenshteinDistance(a, b) {
+    const matrix = [];
+
+    for (let i = 0; i <= b.length; i++) {
+        matrix[i] = [i];
+    }
+
+    for (let j = 0; j <= a.length; j++) {
+        matrix[0][j] = j;
+    }
+
+    for (let i = 1; i <= b.length; i++) {
+        for (let j = 1; j <= a.length; j++) {
+            if (b.charAt(i - 1) === a.charAt(j - 1)) {
+                matrix[i][j] = matrix[i - 1][j - 1];
+            } else {
+                matrix[i][j] = Math.min(
+                    matrix[i - 1][j - 1] + 1,
+                    matrix[i][j - 1] + 1,
+                    matrix[i - 1][j] + 1
+                );
+            }
+        }
+    }
+
+    return matrix[b.length][a.length];
+}
+
+// Normalize Vietnamese text for better matching
+function normalizeText(text) {
+    return text
+        .toLowerCase()
+        .trim()
+        .replace(/\s+/g, ' ')
+        .replace(/[()]/g, ''); // Remove parentheses for better matching
+}
+
+// Match OCR text to available items with fuzzy matching
+function matchOcrTextToItems(ocrText) {
+    const lines = ocrText
+        .split('\n')
+        .map(line => line.trim())
+        .filter(line => line.length > 5); // Filter out very short lines
+
+    const results = [];
+
+    for (const line of lines) {
+        const normalizedLine = normalizeText(line);
+        let bestMatch = null;
+        let bestDistance = Infinity;
+        let exactMatch = false;
+
+        // Try exact match first
+        for (const item of availableItems) {
+            const normalizedItem = normalizeText(item);
+
+            if (normalizedItem === normalizedLine || normalizedLine.includes(normalizedItem)) {
+                bestMatch = item;
+                exactMatch = true;
+                break;
+            }
+        }
+
+        // If no exact match, try fuzzy matching
+        if (!exactMatch) {
+            for (const item of availableItems) {
+                const normalizedItem = normalizeText(item);
+                const distance = levenshteinDistance(normalizedLine, normalizedItem);
+
+                // Only consider if distance is reasonable (≤ 5 for longer strings)
+                if (distance < bestDistance && distance <= Math.max(5, normalizedItem.length * 0.3)) {
+                    bestDistance = distance;
+                    bestMatch = item;
+                }
+            }
+        }
+
+        results.push({
+            ocrText: line,
+            matchedItem: bestDistance <= 5 || exactMatch ? bestMatch : null,
+            confidence: exactMatch ? 'exact' : (bestDistance <= 3 ? 'high' : (bestDistance <= 5 ? 'medium' : 'low')),
+            distance: bestDistance
+        });
+    }
+
+    return results;
+}
+
+// Generate vatpham.txt format entry for unmatched item
+function generateVatphamEntry(itemName) {
+    // Check if the item name already has element/level info
+    const hasElementLevel = /-(Kim|Thủy|Mộc|Hỏa|Thổ)\s*\(cấp\s*\d+\)/i.test(itemName);
+
+    if (hasElementLevel) {
+        return itemName;
+    }
+
+    // Generate entries for all 5 elements at a default level
+    const elements = ['Kim', 'Thủy', 'Mộc', 'Hỏa', 'Thổ'];
+    const entries = [];
+
+    for (const element of elements) {
+        entries.push(`${itemName} - ${element} (cấp 5)`);
+    }
+
+    return entries.join('\n');
+}
+
+// Render OCR item results
+function renderOcrItemResults(results) {
+    const resultsDiv = document.getElementById('itemOcrResults');
+    if (!results || results.length === 0) {
+        resultsDiv.classList.add('hidden');
+        return;
+    }
+
+    let html = '';
+    const unmatchedItems = [];
+
+    for (const result of results) {
+        if (result.matchedItem) {
+            // Matched item
+            html += `
+                <div class="ocr-result-item matched">
+                    <span class="ocr-result-icon">✅</span>
+                    <div class="ocr-result-text">
+                        ${result.matchedItem}
+                        <small>Đã thêm vào danh sách${result.confidence === 'exact' ? '' : ` (khớp ${result.confidence})`}</small>
+                    </div>
+                </div>
+            `;
+
+            // Auto-add to tempInventoryItems
+            if (!tempInventoryItems.find(item => item.name === result.matchedItem)) {
+                tempInventoryItems.push({ name: result.matchedItem, qty: 1 });
+            }
+        } else {
+            // Unmatched item
+            unmatchedItems.push(result.ocrText);
+            html += `
+                <div class="ocr-result-item unmatched">
+                    <span class="ocr-result-icon">⚠️</span>
+                    <div class="ocr-result-text">
+                        ${result.ocrText}
+                        <small>Không tìm thấy trong danh sách</small>
+                    </div>
+                </div>
+            `;
+        }
+    }
+
+    // If there are unmatched items, show copyable text
+    if (unmatchedItems.length > 0) {
+        const copyableText = unmatchedItems.map(item => generateVatphamEntry(item)).join('\n');
+        html += `
+            <div style="margin-top: 0.75rem; padding: 0.5rem; background: rgba(251, 191, 36, 0.1); border-radius: 6px; border: 1px solid rgba(251, 191, 36, 0.3);">
+                <div style="font-size: 0.8rem; margin-bottom: 0.5rem; color: #fbbf24; font-weight: 600;">
+                    📋 Copy để thêm vào vatpham.txt:
+                </div>
+                <div class="ocr-copyable-text" id="copyableVatphamText">${copyableText}</div>
+                <button class="ocr-copy-btn" onclick="copyVatphamText()" style="margin-top: 0.5rem; width: 100%;">
+                    📋 Copy tất cả
+                </button>
+            </div>
+        `;
+    }
+
+    resultsDiv.innerHTML = html;
+    resultsDiv.classList.remove('hidden');
+
+    // Refresh the staging items display
+    renderStagingItems();
+}
+
+// Copy vatpham text to clipboard
+window.copyVatphamText = function () {
+    const textDiv = document.getElementById('copyableVatphamText');
+    if (!textDiv) return;
+
+    const text = textDiv.textContent;
+    navigator.clipboard.writeText(text).then(() => {
+        const btn = event.target;
+        const originalText = btn.textContent;
+        btn.textContent = '✅ Đã copy!';
+        btn.style.background = 'rgba(34, 197, 94, 0.2)';
+
+        setTimeout(() => {
+            btn.textContent = originalText;
+            btn.style.background = '';
+        }, 2000);
+    });
+};
+
+// Setup Item OCR
+function setupItemOCR() {
+    const pasteArea = document.getElementById('itemOcrPasteArea');
+    if (!pasteArea) return;
+
+    // Remove old listeners
+    const newPasteArea = pasteArea.cloneNode(true);
+    pasteArea.parentNode.replaceChild(newPasteArea, pasteArea);
+
+    newPasteArea.addEventListener('paste', handleItemPaste);
+}
+
+// Handle item image paste
+async function handleItemPaste(e) {
+    const items = e.clipboardData.items;
+    let blob = null;
+
+    for (let i = 0; i < items.length; i++) {
+        if (items[i].type.indexOf('image') !== -1) {
+            blob = items[i].getAsFile();
+            break;
+        }
+    }
+
+    if (!blob) return;
+
+    const statusSpan = document.getElementById('itemOcrStatus');
+    const pasteArea = document.getElementById('itemOcrPasteArea');
+
+    pasteArea.classList.add('processing');
+    statusSpan.innerHTML = '⏳ Đang đọc ảnh...';
+
+    try {
+        const result = await Tesseract.recognize(blob, 'vie', {
+            logger: m => {
+                if (m.status === 'recognizing text') {
+                    statusSpan.innerHTML = `⏳ Đang nhận diện... ${Math.round(m.progress * 100)}%`;
+                }
+            }
+        });
+
+        const rawText = result.data.text;
+        console.log('OCR Raw Text:', rawText);
+
+        // Match against available items
+        const matchResults = matchOcrTextToItems(rawText);
+
+        // Render results
+        renderOcrItemResults(matchResults);
+
+        pasteArea.classList.remove('processing');
+        pasteArea.classList.add('success');
+
+        const matchedCount = matchResults.filter(r => r.matchedItem).length;
+        const totalCount = matchResults.length;
+
+        statusSpan.innerHTML = `✅ Nhận diện: ${matchedCount}/${totalCount} vật phẩm`;
+
+        setTimeout(() => {
+            pasteArea.classList.remove('success');
+            statusSpan.innerHTML = '📸 Dán ảnh vật phẩm (Ctrl+V) để tự nhận diện';
+        }, 3000);
+
+    } catch (err) {
+        console.error('Item OCR Error:', err);
+        pasteArea.classList.remove('processing');
+        statusSpan.innerHTML = '❌ Lỗi đọc ảnh';
+
+        setTimeout(() => {
+            statusSpan.innerHTML = '📸 Dán ảnh vật phẩm (Ctrl+V) để tự nhận diện';
+        }, 3000);
     }
 }
 
