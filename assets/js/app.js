@@ -1443,19 +1443,17 @@ function renderOcrItemResults(results) {
     for (const result of results) {
         if (result.matchedItem) {
             const scorePercent = Math.round(result.score * 100);
+            const escapedItem = result.matchedItem.replace(/'/g, "\\'");
             html += `
-                <div class="ocr-result-item matched">
-                    <span class="ocr-result-icon">✅</span>
+                <div class="ocr-result-item matched" onclick="selectOcrItem('${escapedItem}')" style="cursor: pointer;" title="Click để chọn trong dropdown">
+                    <span class="ocr-result-icon">🔍</span>
                     <div class="ocr-result-text">
                         ${result.matchedItem}
-                        <small>Đã thêm (${result.confidence}, ${scorePercent}%, ${result.method})</small>
+                        <small>Click để chọn (${result.confidence}, ${scorePercent}%)</small>
                     </div>
+                    <span style="font-size: 0.75rem; opacity: 0.6;">👆</span>
                 </div>
             `;
-
-            if (!tempInventoryItems.find(item => item.name === result.matchedItem)) {
-                tempInventoryItems.push({ name: result.matchedItem, qty: 1 });
-            }
         } else {
             unmatchedItems.push(result.ocrText);
             html += `
@@ -1487,8 +1485,69 @@ function renderOcrItemResults(results) {
 
     resultsDiv.innerHTML = html;
     resultsDiv.classList.remove('hidden');
-    renderStagingItems();
 }
+
+// Select an OCR-recognized item in the dropdown
+window.selectOcrItem = function (itemName) {
+    const select = document.getElementById('presetItemSelect');
+    if (!select) return;
+
+    // Find the option that matches this item name
+    let found = false;
+    for (let i = 0; i < select.options.length; i++) {
+        if (select.options[i].value === itemName || select.options[i].text === itemName) {
+            select.selectedIndex = i;
+            found = true;
+            break;
+        }
+    }
+
+    if (!found) {
+        // Try partial match
+        for (let i = 0; i < select.options.length; i++) {
+            if (select.options[i].value.includes(itemName) || select.options[i].text.includes(itemName)) {
+                select.selectedIndex = i;
+                found = true;
+                break;
+            }
+        }
+    }
+
+    if (found) {
+        // Highlight the dropdown to draw attention
+        select.style.outline = '2px solid #22c55e';
+        select.style.backgroundColor = 'rgba(34, 197, 94, 0.15)';
+        select.focus();
+
+        // Open dropdown programmatically
+        select.size = Math.min(8, select.options.length);
+        select.style.position = 'relative';
+        select.style.zIndex = '100';
+
+        // Close dropdown on selection or blur
+        const closeDropdown = () => {
+            select.size = 1;
+            select.style.position = '';
+            select.style.zIndex = '';
+            select.style.outline = '';
+            select.style.backgroundColor = '';
+            select.removeEventListener('change', closeDropdown);
+            select.removeEventListener('blur', closeDropdown);
+        };
+
+        select.addEventListener('change', closeDropdown);
+        select.addEventListener('blur', closeDropdown);
+
+        // Scroll dropdown into view
+        select.scrollIntoView({ behavior: 'smooth', block: 'center' });
+
+        // Remove highlight after 3 seconds
+        setTimeout(() => {
+            select.style.outline = '';
+            select.style.backgroundColor = '';
+        }, 3000);
+    }
+};
 
 // Copy vatpham text to clipboard
 window.copyVatphamText = function (e) {
