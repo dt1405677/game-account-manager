@@ -357,6 +357,24 @@ function closeModal() {
 function closeInventoryModal() {
     inventoryModal.classList.add('hidden');
     tempInventoryItems = []; // Clear temp items when closing
+
+    // Reset OCR areas
+    const itemOcrResults = document.getElementById('itemOcrResults');
+    const itemOcrStatus = document.getElementById('itemOcrStatus');
+    const itemOcrPasteArea = document.getElementById('itemOcrPasteArea');
+
+    if (itemOcrResults) {
+        itemOcrResults.innerHTML = '';
+        itemOcrResults.classList.add('hidden');
+    }
+
+    if (itemOcrStatus) {
+        itemOcrStatus.innerHTML = '📸 Dán ảnh vật phẩm (Ctrl+V) để tự nhận diện';
+    }
+
+    if (itemOcrPasteArea) {
+        itemOcrPasteArea.classList.remove('processing', 'success');
+    }
 }
 
 
@@ -1204,7 +1222,9 @@ function normalizeText(text) {
         .toLowerCase()
         .trim()
         .replace(/\s+/g, ' ')
-        .replace(/[()]/g, ''); // Remove parentheses for better matching
+        .replace(/[()\[\]{}]/g, '') // Remove brackets
+        .replace(/[.,;:!?]/g, '') // Remove punctuation
+        .replace(/[-–—]/g, ' '); // Replace dashes with space for better matching
 }
 
 // Match OCR text to available items with fuzzy matching
@@ -1239,8 +1259,9 @@ function matchOcrTextToItems(ocrText) {
                 const normalizedItem = normalizeText(item);
                 const distance = levenshteinDistance(normalizedLine, normalizedItem);
 
-                // Only consider if distance is reasonable (≤ 5 for longer strings)
-                if (distance < bestDistance && distance <= Math.max(5, normalizedItem.length * 0.3)) {
+                // More lenient matching for Vietnamese OCR (≤ 8 or 40% of length)
+                const maxDistance = Math.max(8, Math.floor(normalizedItem.length * 0.4));
+                if (distance < bestDistance && distance <= maxDistance) {
                     bestDistance = distance;
                     bestMatch = item;
                 }
@@ -1249,8 +1270,8 @@ function matchOcrTextToItems(ocrText) {
 
         results.push({
             ocrText: line,
-            matchedItem: bestDistance <= 5 || exactMatch ? bestMatch : null,
-            confidence: exactMatch ? 'exact' : (bestDistance <= 3 ? 'high' : (bestDistance <= 5 ? 'medium' : 'low')),
+            matchedItem: bestDistance <= 8 || exactMatch ? bestMatch : null,
+            confidence: exactMatch ? 'exact' : (bestDistance <= 3 ? 'high' : (bestDistance <= 6 ? 'medium' : 'low')),
             distance: bestDistance
         });
     }
