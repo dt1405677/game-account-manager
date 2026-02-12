@@ -99,10 +99,11 @@ function parseItemList(content) {
  */
 async function loadDaTauFromFiles() {
     try {
+        const timestamp = Date.now();
         const [chisoRes, tichluyRes, vatphamRes] = await Promise.all([
-            fetch('assets/data/chiso.txt'),
-            fetch('assets/data/tichluy.txt'),
-            fetch('assets/data/vatpham.txt')
+            fetch(`assets/data/chiso.txt?v=${timestamp}`),
+            fetch(`assets/data/tichluy.txt?v=${timestamp}`),
+            fetch(`assets/data/vatpham.txt?v=${timestamp}`)
         ]);
 
         if (!chisoRes.ok || !tichluyRes.ok || !vatphamRes.ok) {
@@ -1318,4 +1319,55 @@ window.closeModal = closeModal;
 window.closeInventoryModal = closeInventoryModal;
 window.closeInventory = closeInventoryModal; // Alias if ID used in onclick
 
+// === SIDEBAR RESIZING ===
+function initSidebarResize() {
+    const sidebar = document.querySelector('.sidebar');
+    const resizer = document.getElementById('sidebarResizer');
+    if (!sidebar || !resizer) return;
+
+    // Load saved width from localStorage
+    const savedWidth = localStorage.getItem('sidebar-width');
+    if (savedWidth) {
+        document.documentElement.style.setProperty('--sidebar-width', savedWidth + 'px');
+    }
+
+    let isResizing = false;
+    let startX = 0;
+    let startWidth = 0;
+
+    resizer.addEventListener('mousedown', (e) => {
+        isResizing = true;
+        startX = e.clientX;
+        startWidth = sidebar.offsetWidth;
+        resizer.classList.add('resizing');
+        document.body.style.cursor = 'col-resize';
+        document.body.style.userSelect = 'none';
+        e.preventDefault();
+    });
+
+    document.addEventListener('mousemove', (e) => {
+        if (!isResizing) return;
+
+        const delta = e.clientX - startX;
+        const newWidth = Math.max(200, Math.min(600, startWidth + delta)); // Min 200px, max 600px
+
+        document.documentElement.style.setProperty('--sidebar-width', newWidth + 'px');
+    });
+
+    document.addEventListener('mouseup', () => {
+        if (isResizing) {
+            isResizing = false;
+            resizer.classList.remove('resizing');
+            document.body.style.cursor = '';
+            document.body.style.userSelect = '';
+
+            // Save to localStorage
+            const currentWidth = sidebar.offsetWidth;
+            localStorage.setItem('sidebar-width', currentWidth);
+        }
+    });
+}
+
 init();
+initSidebarResize();
+
