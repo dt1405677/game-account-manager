@@ -947,79 +947,12 @@ function checkQuestItemMatches() {
 
 // --- Rendering ---
 
-function renderMatchNotification() {
-    const notificationEl = document.getElementById('matchNotification');
-    const matchCountEl = document.getElementById('matchCount');
-    const matchToggleBtn = document.getElementById('matchToggle');
-
-    if (!notificationEl) return;
-
-    // Collect all matches
-    const allMatches = [];
-    questItemMatches.forEach((matches, questTitle) => {
-        matches.forEach(match => {
-            allMatches.push({
-                questTitle,
-                questChar: match.questCharName || match.questAccountName,
-                ownerChar: match.ownerCharName || match.ownerAccountName,
-                qty: match.qty
-            });
-        });
-    });
-
-    // Update badge count
-    if (matchCountEl) {
-        matchCountEl.textContent = allMatches.length;
-    }
-
-    // Toggle button visibility
-    if (matchToggleBtn) {
-        if (allMatches.length === 0) {
-            matchToggleBtn.style.display = 'none';
-        } else {
-            matchToggleBtn.style.display = '';
-        }
-    }
-
-    // Populate panel content (but don't auto-show)
-    if (allMatches.length === 0) {
-        notificationEl.innerHTML = '<div class="match-notification-header"><span>🎯 Không có trùng khớp nào</span></div>';
-        return;
-    }
-
-    // Render notification content
-    notificationEl.innerHTML = `
-        <div class="match-notification-header">
-            <span>🎯 Có ${allMatches.length} trùng khớp nhiệm vụ-vật phẩm</span>
-            <button class="match-close-btn" onclick="toggleMatchPanel()">✕</button>
-        </div>
-        <div class="match-notification-body">
-            ${allMatches.map(m => `
-                <div class="match-notification-item">
-                    <span class="match-quest">${m.questChar}</span>
-                    <span class="match-arrow">cần</span>
-                    <span class="match-item">${m.questTitle}</span>
-                    <span class="match-arrow">←</span>
-                    <span class="match-owner">${m.ownerChar} có x${m.qty}</span>
-                </div>
-            `).join('')}
-        </div>
-    `;
-}
-
-function toggleMatchPanel() {
-    const notificationEl = document.getElementById('matchNotification');
-    if (!notificationEl) return;
-    notificationEl.classList.toggle('hidden');
-}
-
 function render() {
     checkQuestItemMatches();
-    renderMatchNotification();
     renderSidebar();
     updateTotalStats();
     if (currentAccountId) {
-        renderDetail(currentAccountId); // Re-render detail if open
+        renderDetail(currentAccountId);
     }
 }
 
@@ -1187,6 +1120,27 @@ function renderDetail(accId) {
                 else window.selectQuest(acc.id, tIndex, parseInt(val));
             };
             body.appendChild(select);
+
+            // Show match info if this quest has a selected item matching another character's inventory
+            if (task.selectedIndex !== null && task.selectedIndex !== undefined) {
+                const selectedChild = task.children[task.selectedIndex];
+                if (selectedChild) {
+                    const matches = questItemMatches.get(selectedChild.title);
+                    const relevantMatches = matches ? matches.filter(m => m.questAccId === acc.id) : [];
+                    if (relevantMatches.length > 0) {
+                        const matchDiv = document.createElement('div');
+                        matchDiv.className = 'quest-match-info';
+                        const owners = relevantMatches.map(m => {
+                            const name = m.ownerCharName || m.ownerAccountName;
+                            return `<span class="quest-match-owner">${name}</span>`;
+                        }).join(', ');
+                        matchDiv.innerHTML = `🎯 ${owners} có vật phẩm này`;
+                        body.appendChild(matchDiv);
+                        // Also highlight the dropdown
+                        select.classList.add('quest-dropdown-matched');
+                    }
+                }
+            }
 
         } else if (task.selectionType === 'checkbox') {
             task.children.forEach((child, cIndex) => {
