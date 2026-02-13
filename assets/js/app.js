@@ -947,8 +947,52 @@ function checkQuestItemMatches() {
 
 // --- Rendering ---
 
+function renderMatchNotification() {
+    const notificationEl = document.getElementById('matchNotification');
+    if (!notificationEl) return;
+
+    // Collect all matches
+    const allMatches = [];
+    questItemMatches.forEach((matches, questTitle) => {
+        matches.forEach(match => {
+            allMatches.push({
+                questTitle,
+                questChar: match.questCharName || match.questAccountName,
+                ownerChar: match.ownerCharName || match.ownerAccountName,
+                qty: match.qty
+            });
+        });
+    });
+
+    if (allMatches.length === 0) {
+        notificationEl.classList.add('hidden');
+        return;
+    }
+
+    // Render notification
+    notificationEl.classList.remove('hidden');
+    notificationEl.innerHTML = `
+        <div class="match-notification-header">
+            <span>🎯 Có ${allMatches.length} trùng khớp nhiệm vụ-vật phẩm</span>
+            <button class="match-close-btn" onclick="document.getElementById('matchNotification').classList.add('hidden')">✕</button>
+        </div>
+        <div class="match-notification-body">
+            ${allMatches.map(m => `
+                <div class="match-notification-item">
+                    <span class="match-quest">${m.questChar}</span>
+                    <span class="match-arrow">cần</span>
+                    <span class="match-item">${m.questTitle}</span>
+                    <span class="match-arrow">←</span>
+                    <span class="match-owner">${m.ownerChar} có x${m.qty}</span>
+                </div>
+            `).join('')}
+        </div>
+    `;
+}
+
 function render() {
     checkQuestItemMatches();
+    renderMatchNotification();
     renderSidebar();
     updateTotalStats();
     if (currentAccountId) {
@@ -1001,7 +1045,7 @@ function renderSidebar() {
             const relevantMatches = matches ? matches.filter(m => m.questAccId === acc.id) : [];
             if (relevantMatches.length > 0) {
                 const owners = relevantMatches.map(m => m.ownerCharName || m.ownerAccountName).join(', ');
-                return `<div class="sidebar-item-quest quest-matched" title="${owners} có vật phẩm này">🎯 ${q} <span class="quest-match-badge">← ${owners}</span></div>`;
+                return `<div class="sidebar-item-quest quest-matched" title="${owners} có vật phẩm này">🎯 ${q}</div>`;
             }
             return `<div class="sidebar-item-quest">🏃 ${q}</div>`;
         }).join('');
@@ -1170,13 +1214,13 @@ function renderDetail(accId) {
                 const requesters = isMatched
                     ? relevantMatches.map(m => m.questCharName || m.questAccountName).join(', ')
                     : '';
-                const matchBadge = isMatched
-                    ? `<span class="item-match-badge" title="${requesters} cần vật phẩm này">🎯 → ${requesters}</span>`
+                const matchIcon = isMatched
+                    ? `<span class="item-match-icon" title="${requesters} cần vật phẩm này">🎯</span>`
                     : '';
 
                 return `
                 <label class="task-item${matchClass}" style="justify-content:space-between">
-                    <span style="flex:1">${item.name} ${matchBadge}</span>
+                    <span style="flex:1">${matchIcon} ${item.name}</span>
                     <span style="opacity:0.7; margin:0 0.5rem">x${item.qty || 1}</span>
                     <button type="button" onclick="removeInventoryItem(${idx}); render();" class="btn delete-btn" style="padding:0.2rem 0.5rem; font-size:1.2rem">×</button>
                 </label>

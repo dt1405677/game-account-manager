@@ -23,6 +23,100 @@ body {
     min-height: 100vh;
 }
 
+/* === MATCH NOTIFICATION PANEL === */
+.match-notification {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    background: linear-gradient(135deg, rgba(251, 191, 36, 0.15) 0%, rgba(245, 158, 11, 0.1) 100%);
+    border-bottom: 2px solid rgba(251, 191, 36, 0.3);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    z-index: 1000;
+    animation: slideDown 0.3s ease-out;
+}
+
+@keyframes slideDown {
+    from {
+        transform: translateY(-100%);
+    }
+
+    to {
+        transform: translateY(0);
+    }
+}
+
+.match-notification-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.6rem 1.2rem;
+    background: rgba(0, 0, 0, 0.2);
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: #fbbf24;
+}
+
+.match-close-btn {
+    background: none;
+    border: none;
+    color: #fbbf24;
+    font-size: 1.2rem;
+    cursor: pointer;
+    padding: 0 0.5rem;
+    opacity: 0.7;
+    transition: opacity 0.2s;
+}
+
+.match-close-btn:hover {
+    opacity: 1;
+}
+
+.match-notification-body {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.6rem;
+    padding: 0.8rem 1.2rem;
+    max-height: 150px;
+    overflow-y: auto;
+}
+
+.match-notification-item {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    background: rgba(0, 0, 0, 0.3);
+    padding: 0.4rem 0.8rem;
+    border-radius: 6px;
+    font-size: 0.75rem;
+    border: 1px solid rgba(251, 191, 36, 0.2);
+}
+
+.match-quest {
+    color: #a78bfa;
+    font-weight: 600;
+}
+
+.match-arrow {
+    color: #94a3b8;
+    opacity: 0.7;
+    font-size: 0.7rem;
+}
+
+.match-item {
+    color: #2dd4bf;
+    font-weight: 500;
+}
+
+.match-owner {
+    color: #fbbf24;
+    font-weight: 600;
+}
+
+.match-notification.hidden {
+    display: none;
+}
+
 /* === MASTER-DETAIL LAYOUT === */
 .app-layout {
     display: flex;
@@ -254,13 +348,7 @@ body {
     animation: questMatchPulse 2s ease-in-out infinite;
 }
 
-.quest-match-badge {
-    font-size: 0.69rem;
-    color: #fb923c;
-    opacity: 0.85;
-    font-weight: 600;
-    margin-left: 0.23rem;
-}
+/* Removed quest-match-badge - now using tooltip only */
 
 .task-item.item-matched {
     background: rgba(251, 191, 36, 0.1) !important;
@@ -269,16 +357,11 @@ body {
     animation: questMatchPulse 2s ease-in-out infinite;
 }
 
-.item-match-badge {
+.item-match-icon {
     display: inline-block;
-    font-size: 0.72rem;
-    color: #fbbf24;
-    font-weight: 600;
-    margin-left: 0.4rem;
-    background: rgba(251, 191, 36, 0.15);
-    padding: 0.1rem 0.4rem;
-    border-radius: 4px;
-    border: 1px solid rgba(251, 191, 36, 0.25);
+    margin-right: 0.3rem;
+    font-size: 0.9rem;
+    cursor: help;
 }
 
 @keyframes questMatchPulse {
