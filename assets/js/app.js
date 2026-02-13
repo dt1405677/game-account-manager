@@ -918,7 +918,11 @@ function checkQuestItemMatches() {
             if (!acc.inventory?.items) return;
 
             acc.inventory.items.forEach(item => {
-                if (item.name === quest.questTitle) {
+                // Normalize strings for comparison (trim, lowercase)
+                const normalizedItemName = item.name.trim().toLowerCase();
+                const normalizedQuestTitle = quest.questTitle.trim().toLowerCase();
+
+                if (normalizedItemName === normalizedQuestTitle) {
                     // Quest → item owners
                     if (!questItemMatches.has(quest.questTitle)) {
                         questItemMatches.set(quest.questTitle, []);
