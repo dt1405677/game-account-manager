@@ -12,6 +12,7 @@ let cloudSyncDone = false; // Flag to prevent stale data upload race condition
 let tempInventoryItems = []; // Temporary staging for items being added in modal
 let availableItems = []; // Items loaded from vatpham.txt for dropdown
 let availableChisoItems = []; // Items loaded from chiso.txt for dropdown
+let questItemMatches = new Map(); // Quest title → [{ accountName, charName, itemName, qty }]
 
 // Constants
 const STORAGE_KEY = 'game_account_manager_data';
@@ -877,9 +878,73 @@ window.toggleLogin = async function () {
     }
 };
 
+// --- Quest-Item Matching ---
+
+/**
+ * Scan all accounts: for each selected Dã Tẩu quest (Chỉ Số + Vật Phẩm),
+ * find inventory items across ALL accounts that match the quest title.
+ * Returns Map: questTitle → [{ accId, accountName, charName, itemName, qty }]
+ * Also builds reverse map: itemOwnerAccId:itemName → [{ accId, accountName, charName, questTitle }]
+ */
+function checkQuestItemMatches() {
+    questItemMatches = new Map();
+
+    // Collect all selected quests per account
+    const selectedQuests = []; // { accId, accountName, charName, questTitle, taskTitle }
+    state.accounts.forEach(acc => {
+        const daTauTasks = acc.tasks.filter(t =>
+            t.title === 'Dã Tẩu - Chỉ Số' || t.title === 'Dã Tẩu - Vật Phẩm'
+        );
+        daTauTasks.forEach(task => {
+            if (task.selectedIndex !== null && task.selectedIndex !== undefined) {
+                const selected = task.children[task.selectedIndex];
+                if (selected) {
+                    selectedQuests.push({
+                        accId: acc.id,
+                        accountName: acc.name,
+                        charName: acc.charName || '',
+                        questTitle: selected.title,
+                        taskTitle: task.title
+                    });
+                }
+            }
+        });
+    });
+
+    // For each selected quest, find matching items in OTHER accounts' inventories
+    selectedQuests.forEach(quest => {
+        state.accounts.forEach(acc => {
+            if (acc.id === quest.accId) return; // Skip same account
+            if (!acc.inventory?.items) return;
+
+            acc.inventory.items.forEach(item => {
+                if (item.name === quest.questTitle) {
+                    // Quest → item owners
+                    if (!questItemMatches.has(quest.questTitle)) {
+                        questItemMatches.set(quest.questTitle, []);
+                    }
+                    questItemMatches.get(quest.questTitle).push({
+                        questAccId: quest.accId,
+                        questAccountName: quest.accountName,
+                        questCharName: quest.charName,
+                        ownerAccId: acc.id,
+                        ownerAccountName: acc.name,
+                        ownerCharName: acc.charName || '',
+                        itemName: item.name,
+                        qty: item.qty || 1
+                    });
+                }
+            });
+        });
+    });
+
+    return questItemMatches;
+}
+
 // --- Rendering ---
 
 function render() {
+    checkQuestItemMatches();
     renderSidebar();
     updateTotalStats();
     if (currentAccountId) {
@@ -925,12 +990,24 @@ function renderSidebar() {
             }
         });
 
+        // Build quest lines with match highlighting
+        const questLinesHTML = daTauQuests.map(q => {
+            const matches = questItemMatches.get(q);
+            // Only show matches relevant to THIS account's quest
+            const relevantMatches = matches ? matches.filter(m => m.questAccId === acc.id) : [];
+            if (relevantMatches.length > 0) {
+                const owners = relevantMatches.map(m => m.ownerCharName || m.ownerAccountName).join(', ');
+                return `<div class="sidebar-item-quest quest-matched" title="${owners} có vật phẩm này">🎯 ${q} <span class="quest-match-badge">← ${owners}</span></div>`;
+            }
+            return `<div class="sidebar-item-quest">🏃 ${q}</div>`;
+        }).join('');
+
         item.innerHTML = `
             <div class="sidebar-item-info">
                 <div class="sidebar-item-name">${acc.name}</div>
                 ${acc.charName ? `<div class="sidebar-item-char">⚔️ ${acc.charName}${acc.checkedIn ? ' <span class="checkin-badge">✓</span>' : ''}</div>` : ''}
                 ${acc.note ? `<div class="sidebar-item-note">📝 ${acc.note}</div>` : ''}
-                ${daTauQuests.length > 0 ? daTauQuests.map(q => `<div class="sidebar-item-quest">🏃 ${q}</div>`).join('') : ''}
+                ${questLinesHTML}
             </div>
             <div class="sidebar-item-status">
                 <div class="status-dot ${statusClass}"></div>
@@ -1080,13 +1157,27 @@ function renderDetail(accId) {
                 </div>
             `;
         } else {
-            const itemsHTML = acc.inventory.items.map((item, idx) => `
-                <label class="task-item" style="justify-content:space-between">
-                    <span style="flex:1">${item.name}</span>
+            const itemsHTML = acc.inventory.items.map((item, idx) => {
+                // Check if this item matches any other account's quest
+                const matches = questItemMatches.get(item.name);
+                const relevantMatches = matches ? matches.filter(m => m.ownerAccId === acc.id) : [];
+                const isMatched = relevantMatches.length > 0;
+                const matchClass = isMatched ? ' item-matched' : '';
+                const requesters = isMatched
+                    ? relevantMatches.map(m => m.questCharName || m.questAccountName).join(', ')
+                    : '';
+                const matchBadge = isMatched
+                    ? `<span class="item-match-badge" title="${requesters} cần vật phẩm này">🎯 → ${requesters}</span>`
+                    : '';
+
+                return `
+                <label class="task-item${matchClass}" style="justify-content:space-between">
+                    <span style="flex:1">${item.name} ${matchBadge}</span>
                     <span style="opacity:0.7; margin:0 0.5rem">x${item.qty || 1}</span>
                     <button type="button" onclick="removeInventoryItem(${idx}); render();" class="btn delete-btn" style="padding:0.2rem 0.5rem; font-size:1.2rem">×</button>
                 </label>
-            `).join('');
+            `;
+            }).join('');
 
             detailItems.innerHTML = `
                 <div class="task-card">

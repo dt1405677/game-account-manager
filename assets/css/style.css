@@ -243,6 +243,56 @@ body {
     margin-top: 0.1rem;
 }
 
+/* Quest-Item Match Highlights */
+.sidebar-item-quest.quest-matched {
+    color: #fbbf24;
+    background: rgba(251, 191, 36, 0.12);
+    border-radius: 4px;
+    padding: 0.1rem 0.35rem;
+    margin-left: -0.35rem;
+    border-left: 2px solid #f59e0b;
+    animation: questMatchPulse 2s ease-in-out infinite;
+}
+
+.quest-match-badge {
+    font-size: 0.6rem;
+    color: #fb923c;
+    opacity: 0.85;
+    font-weight: 600;
+    margin-left: 0.2rem;
+}
+
+.task-item.item-matched {
+    background: rgba(251, 191, 36, 0.1) !important;
+    border: 1px solid rgba(245, 158, 11, 0.35);
+    border-radius: 6px;
+    animation: questMatchPulse 2s ease-in-out infinite;
+}
+
+.item-match-badge {
+    display: inline-block;
+    font-size: 0.72rem;
+    color: #fbbf24;
+    font-weight: 600;
+    margin-left: 0.4rem;
+    background: rgba(251, 191, 36, 0.15);
+    padding: 0.1rem 0.4rem;
+    border-radius: 4px;
+    border: 1px solid rgba(251, 191, 36, 0.25);
+}
+
+@keyframes questMatchPulse {
+
+    0%,
+    100% {
+        box-shadow: 0 0 4px rgba(251, 191, 36, 0.15);
+    }
+
+    50% {
+        box-shadow: 0 0 12px rgba(251, 191, 36, 0.3);
+    }
+}
+
 .checkin-badge {
     display: inline-block;
     background-color: rgba(34, 197, 94, 0.2);
