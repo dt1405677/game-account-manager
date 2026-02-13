@@ -949,6 +949,9 @@ function checkQuestItemMatches() {
 
 function renderMatchNotification() {
     const notificationEl = document.getElementById('matchNotification');
+    const matchCountEl = document.getElementById('matchCount');
+    const matchToggleBtn = document.getElementById('matchToggle');
+
     if (!notificationEl) return;
 
     // Collect all matches
@@ -964,17 +967,31 @@ function renderMatchNotification() {
         });
     });
 
+    // Update badge count
+    if (matchCountEl) {
+        matchCountEl.textContent = allMatches.length;
+    }
+
+    // Toggle button visibility
+    if (matchToggleBtn) {
+        if (allMatches.length === 0) {
+            matchToggleBtn.style.display = 'none';
+        } else {
+            matchToggleBtn.style.display = '';
+        }
+    }
+
+    // Populate panel content (but don't auto-show)
     if (allMatches.length === 0) {
-        notificationEl.classList.add('hidden');
+        notificationEl.innerHTML = '<div class="match-notification-header"><span>🎯 Không có trùng khớp nào</span></div>';
         return;
     }
 
-    // Render notification
-    notificationEl.classList.remove('hidden');
+    // Render notification content
     notificationEl.innerHTML = `
         <div class="match-notification-header">
             <span>🎯 Có ${allMatches.length} trùng khớp nhiệm vụ-vật phẩm</span>
-            <button class="match-close-btn" onclick="document.getElementById('matchNotification').classList.add('hidden')">✕</button>
+            <button class="match-close-btn" onclick="toggleMatchPanel()">✕</button>
         </div>
         <div class="match-notification-body">
             ${allMatches.map(m => `
@@ -988,6 +1005,12 @@ function renderMatchNotification() {
             `).join('')}
         </div>
     `;
+}
+
+function toggleMatchPanel() {
+    const notificationEl = document.getElementById('matchNotification');
+    if (!notificationEl) return;
+    notificationEl.classList.toggle('hidden');
 }
 
 function render() {
