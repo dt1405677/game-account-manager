@@ -1308,6 +1308,11 @@ function renderDetail(accId) {
             const isVatPhamQuest = task.title === 'Dã Tẩu - Vật Phẩm';
 
             if (isVatPhamQuest) {
+                // Build structure if not already built
+                if (Object.keys(vatphamStructured).length === 0) {
+                    buildVatphamStructure();
+                }
+
                 // Cascading dropdown for Vật Phẩm
                 const cascadingId = `quest-${acc.id}-${tIndex}`;
                 const cascadingDiv = document.createElement('div');
