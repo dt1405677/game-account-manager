@@ -754,6 +754,105 @@ body {
     font-style: italic;
 }
 
+/* Compact item chips in detail panel */
+.item-chips-container {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem;
+}
+
+.item-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    padding: 0.25rem 0.5rem;
+    border-radius: 6px;
+    font-size: 0.75rem;
+    background: rgba(139, 92, 246, 0.1);
+    border: 1px solid rgba(139, 92, 246, 0.2);
+    color: #c4b5fd;
+    transition: all 0.15s;
+    max-width: 100%;
+}
+
+.item-chip:hover {
+    background: rgba(139, 92, 246, 0.18);
+    border-color: rgba(139, 92, 246, 0.35);
+}
+
+.item-chip-matched {
+    background: rgba(251, 191, 36, 0.12);
+    border-color: rgba(251, 191, 36, 0.3);
+    color: #fbbf24;
+}
+
+.item-chip-matched:hover {
+    background: rgba(251, 191, 36, 0.2);
+}
+
+.item-chip-name {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 200px;
+}
+
+.item-chip-qty {
+    opacity: 0.65;
+    font-size: 0.7rem;
+    white-space: nowrap;
+}
+
+.item-chip-dec {
+    background: none;
+    border: none;
+    color: #ef4444;
+    cursor: pointer;
+    font-size: 0.8rem;
+    padding: 0 0.2rem;
+    opacity: 0.5;
+    transition: opacity 0.15s;
+    line-height: 1;
+    font-weight: 700;
+}
+
+.item-chip-dec:hover {
+    opacity: 1;
+}
+
+/* Cascading dropdown row in inventory modal */
+.inv-cascading-row {
+    display: flex;
+    gap: 0.4rem;
+    margin-bottom: 0.5rem;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+.inv-cascading-row select {
+    flex: 1;
+    min-width: 90px;
+    padding: 0.4rem 0.5rem;
+    border-radius: 6px;
+    border: 1px solid #334155;
+    background-color: #0f172a;
+    color: var(--text-main);
+    font-family: inherit;
+    font-size: 0.8rem;
+    cursor: pointer;
+    transition: border-color 0.2s;
+}
+
+.inv-cascading-row select:focus {
+    outline: none;
+    border-color: var(--primary);
+}
+
+.inv-cascading-row select:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+
 /* Status badge */
 .status-badge {
     padding: 0.3rem 0.7rem;

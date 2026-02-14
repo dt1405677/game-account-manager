@@ -732,22 +732,153 @@ function renderStagingItems() {
     `).join('');
 }
 
-// Populate dropdown with items from vatpham.txt
-function populateItemDropdown() {
-    const select = document.getElementById('presetItemSelect');
-    if (!select) return;
+// Parse vatpham.txt items into structured categories for cascading dropdown
+// Structure: { categoryKey: { displayName, items: { baseName: [elements] } } }
+let vatphamStructured = {};
 
-    // Clear existing options except first (placeholder)
-    select.innerHTML = '<option value="">-- Chọn từ danh sách --</option>';
+function buildVatphamStructure() {
+    vatphamStructured = {};
+    const categoryMap = {
+        'Giới Chỉ': 'Giới Chỉ (Nhẫn)',
+        'Hạng Liên': 'Hạng Liên (Dây chuyền)',
+        'Hạng Liêm': 'Hạng Liên (Dây chuyền)',
+        'Hộ Thân Phù': 'Hộ Thân Phù',
+        'Ngọc Bội': 'Ngọc Bội',
+        'Hương Nang': 'Hương Nang'
+    };
 
-    // Add items from availableItems
     availableItems.forEach(itemName => {
-        const option = document.createElement('option');
-        option.value = itemName;
-        option.textContent = itemName;
-        select.appendChild(option);
+        // Parse: "Tên Vật Phẩm - Ngũ Hành (Cấp)"
+        const match = itemName.match(/^(.+?)\s*-\s*(Kim|Thủy|Mộc|Hỏa|Thổ)\s*\((\d+)\)$/);
+        if (!match) return;
+
+        const [, baseName, element, level] = match;
+        const baseNameTrimmed = baseName.trim();
+
+        // Detect category from item name
+        let catKey = 'Khác';
+        let catDisplay = 'Khác';
+        for (const [keyword, display] of Object.entries(categoryMap)) {
+            if (baseNameTrimmed.includes(keyword)) {
+                catKey = keyword;
+                catDisplay = display;
+                break;
+            }
+        }
+
+        if (!vatphamStructured[catKey]) {
+            vatphamStructured[catKey] = { displayName: catDisplay, items: {} };
+        }
+
+        const nameWithLevel = `${baseNameTrimmed} (${level})`;
+        if (!vatphamStructured[catKey].items[nameWithLevel]) {
+            vatphamStructured[catKey].items[nameWithLevel] = [];
+        }
+        vatphamStructured[catKey].items[nameWithLevel].push(element);
     });
 }
+
+// Populate cascading dropdown step 1: Category
+function populateItemDropdown() {
+    buildVatphamStructure();
+    const catSelect = document.getElementById('itemCatSelect');
+    const nameSelect = document.getElementById('itemNameSelect');
+    const elemSelect = document.getElementById('itemElemSelect');
+    if (!catSelect || !nameSelect || !elemSelect) return;
+
+    catSelect.innerHTML = '<option value="">-- Loại --</option>';
+    nameSelect.innerHTML = '<option value="">-- Tên --</option>';
+    elemSelect.innerHTML = '<option value="">-- Hệ --</option>';
+    nameSelect.disabled = true;
+    elemSelect.disabled = true;
+
+    Object.entries(vatphamStructured).forEach(([key, cat]) => {
+        const opt = document.createElement('option');
+        opt.value = key;
+        opt.textContent = cat.displayName;
+        catSelect.appendChild(opt);
+    });
+}
+
+// Cascading step 2: when category changes, populate item names
+window.onItemCatChange = function () {
+    const catSelect = document.getElementById('itemCatSelect');
+    const nameSelect = document.getElementById('itemNameSelect');
+    const elemSelect = document.getElementById('itemElemSelect');
+    const catKey = catSelect.value;
+
+    nameSelect.innerHTML = '<option value="">-- Tên --</option>';
+    elemSelect.innerHTML = '<option value="">-- Hệ --</option>';
+    elemSelect.disabled = true;
+
+    if (!catKey || !vatphamStructured[catKey]) {
+        nameSelect.disabled = true;
+        return;
+    }
+
+    nameSelect.disabled = false;
+    Object.keys(vatphamStructured[catKey].items).forEach(name => {
+        const opt = document.createElement('option');
+        opt.value = name;
+        opt.textContent = name;
+        nameSelect.appendChild(opt);
+    });
+};
+
+// Cascading step 3: when item name changes, populate elements
+window.onItemNameChange = function () {
+    const catSelect = document.getElementById('itemCatSelect');
+    const nameSelect = document.getElementById('itemNameSelect');
+    const elemSelect = document.getElementById('itemElemSelect');
+    const catKey = catSelect.value;
+    const nameKey = nameSelect.value;
+
+    elemSelect.innerHTML = '<option value="">-- Hệ --</option>';
+
+    if (!catKey || !nameKey || !vatphamStructured[catKey]?.items[nameKey]) {
+        elemSelect.disabled = true;
+        return;
+    }
+
+    elemSelect.disabled = false;
+    vatphamStructured[catKey].items[nameKey].forEach(elem => {
+        const opt = document.createElement('option');
+        opt.value = elem;
+        opt.textContent = elem;
+        elemSelect.appendChild(opt);
+    });
+};
+
+// Add item from cascading dropdown
+window.addCascadingItem = function () {
+    const catSelect = document.getElementById('itemCatSelect');
+    const nameSelect = document.getElementById('itemNameSelect');
+    const elemSelect = document.getElementById('itemElemSelect');
+
+    const nameKey = nameSelect?.value;
+    const elem = elemSelect?.value;
+
+    if (!nameKey || !elem) {
+        alert('Vui lòng chọn đầy đủ Loại → Tên → Hệ');
+        return;
+    }
+
+    // Reconstruct full item name: "Base Name - Element (Level)"
+    // nameKey = "Base Name (Level)", elem = "Kim"
+    const nameMatch = nameKey.match(/^(.+?)\s*\((\d+)\)$/);
+    if (!nameMatch) return;
+    const fullName = `${nameMatch[1]} - ${elem} (${nameMatch[2]})`;
+
+    tempInventoryItems.push({ name: fullName, qty: 1 });
+    renderStagingItems();
+
+    // Reset dropdowns
+    catSelect.selectedIndex = 0;
+    nameSelect.innerHTML = '<option value="">-- Tên --</option>';
+    nameSelect.disabled = true;
+    elemSelect.innerHTML = '<option value="">-- Hệ --</option>';
+    elemSelect.disabled = true;
+};
 
 // Populate chiso dropdown with items from chiso.txt
 function populateChisoDropdown() {
@@ -782,21 +913,8 @@ window.addPresetChiso = function () {
     select.selectedIndex = 0;
 };
 
-// Add preset item from dropdown to staging
-window.addPresetItem = function () {
-    const select = document.getElementById('presetItemSelect');
-    const itemName = select.value;
-    if (!itemName) return;
-
-    // Add to temp staging (each item is separate)
-    tempInventoryItems.push({ name: itemName, qty: 1 });
-
-    // Re-render staging list
-    renderStagingItems();
-
-    // Reset dropdown
-    select.selectedIndex = 0;
-};
+// addPresetItem kept for backward compat but no longer used
+window.addPresetItem = function () { };
 
 // Add custom inventory item to staging
 window.addInventoryItem = function () {
@@ -827,12 +945,25 @@ window.removeStagingItem = function (index) {
     renderStagingItems();
 };
 
-// Remove inventory item by index (from detail panel)
+// Decrement inventory item qty by 1 (from detail panel). Remove if qty reaches 0.
+window.decrementInventoryItem = function (index) {
+    const acc = state.accounts.find(a => a.id === currentAccountId);
+    if (!acc?.inventory?.items?.[index]) return;
+    acc.inventory.items[index].qty = (acc.inventory.items[index].qty || 1) - 1;
+    if (acc.inventory.items[index].qty <= 0) {
+        acc.inventory.items.splice(index, 1);
+    }
+    saveState();
+    render();
+};
+
+// Remove inventory item entirely by index (from detail panel)
 window.removeInventoryItem = function (index) {
     const acc = state.accounts.find(a => a.id === currentAccountId);
+    if (!acc?.inventory?.items?.[index]) return;
     acc.inventory.items.splice(index, 1);
     saveState();
-    render(); // Update detail panel immediately
+    render();
 };
 
 
@@ -1169,7 +1300,7 @@ function renderDetail(accId) {
         detailTasks.appendChild(taskCard);
     });
 
-    // Render Items Panel
+    // Render Items Panel (compact chip layout)
     const detailItems = document.getElementById('detailItems');
     if (detailItems) {
         if (!acc.inventory?.items || acc.inventory.items.length === 0) {
@@ -1187,27 +1318,26 @@ function renderDetail(accId) {
                 const matches = questItemMatches.get(item.name);
                 const relevantMatches = matches ? matches.filter(m => m.ownerAccId === acc.id) : [];
                 const isMatched = relevantMatches.length > 0;
-                const matchClass = isMatched ? ' item-matched' : '';
+                const matchClass = isMatched ? ' item-chip-matched' : '';
                 const requesters = isMatched
                     ? relevantMatches.map(m => m.questCharName || m.questAccountName).join(', ')
                     : '';
                 const matchIcon = isMatched
                     ? `<span class="item-match-icon" title="${requesters} cần vật phẩm này">🎯</span>`
                     : '';
+                const qty = item.qty || 1;
 
-                return `
-                <label class="task-item${matchClass}" style="justify-content:space-between">
-                    <span style="flex:1">${matchIcon} ${item.name}</span>
-                    <span style="opacity:0.7; margin:0 0.5rem">x${item.qty || 1}</span>
-                    <button type="button" onclick="removeInventoryItem(${idx}); render();" class="btn delete-btn" style="padding:0.2rem 0.5rem; font-size:1.2rem">×</button>
-                </label>
-            `;
+                return `<span class="item-chip${matchClass}" title="${item.name} x${qty}">
+                    ${matchIcon}<span class="item-chip-name">${item.name}</span>
+                    <span class="item-chip-qty">x${qty}</span>
+                    <button type="button" onclick="decrementInventoryItem(${idx})" class="item-chip-dec" title="-1">−</button>
+                </span>`;
             }).join('');
 
             detailItems.innerHTML = `
                 <div class="task-card">
                     <div class="task-header"><span>📦 Vật phẩm (${acc.inventory.items.length})</span></div>
-                    <div class="task-body">
+                    <div class="task-body item-chips-container">
                         ${itemsHTML}
                     </div>
                 </div>
