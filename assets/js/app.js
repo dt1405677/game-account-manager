@@ -739,12 +739,12 @@ let vatphamStructured = {};
 function buildVatphamStructure() {
     vatphamStructured = {};
     const categoryMap = {
-        'Giới Chỉ': 'Giới Chỉ (Nhẫn)',
-        'Hạng Liên': 'Hạng Liên (Dây chuyền)',
-        'Hạng Liêm': 'Hạng Liên (Dây chuyền)',
-        'Hộ Thân Phù': 'Hộ Thân Phù',
-        'Ngọc Bội': 'Ngọc Bội',
-        'Hương Nang': 'Hương Nang'
+        'Giới Chỉ': 'Nhẫn',
+        'Hạng Liên': 'Dây chuyền (nữ)',
+        'Hạng Liêm': 'Dây chuyền (nữ)',
+        'Hộ Thân Phù': 'Dây chuyền (nam)',
+        'Ngọc Bội': 'Ngọc bội (nam)',
+        'Hương Nang': 'Ngọc bội (nữ)'
     };
 
     availableItems.forEach(itemName => {
