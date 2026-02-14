@@ -474,15 +474,94 @@ window.toggleDay = function (accId, taskIndex, childIndex) {
 
 window.selectQuest = function (accId, taskIndex, childIndex) {
     const acc = state.accounts.find(a => a.id === accId);
+    if (!acc) return;
     const task = acc.tasks[taskIndex];
-    if (task.selectionType === 'radio') {
-        task.selectedIndex = childIndex;
-        // Mark selected as "active/completed" for visual feedback if needed?
-        // Usually radio just means "selected". 
-        // Logic: Only one selected at a time.
-    }
+    if (!task) return;
+
+    task.selectedIndex = childIndex;
     saveState();
     render();
+};
+
+// Cascading quest selection helpers
+window.onQuestCatChange = function (accId, taskIndex) {
+    const cascadingId = `quest-${accId}-${taskIndex}`;
+    const catSelect = document.getElementById(`${cascadingId}-cat`);
+    const nameSelect = document.getElementById(`${cascadingId}-name`);
+    const elemSelect = document.getElementById(`${cascadingId}-elem`);
+    const catKey = catSelect?.value;
+
+    if (!nameSelect || !elemSelect) return;
+
+    nameSelect.innerHTML = '<option value="">-- Tên --</option>';
+    elemSelect.innerHTML = '<option value="">-- Hệ --</option>';
+    elemSelect.disabled = true;
+
+    if (!catKey || !vatphamStructured[catKey]) {
+        nameSelect.disabled = true;
+        return;
+    }
+
+    nameSelect.disabled = false;
+    Object.keys(vatphamStructured[catKey].items).forEach(name => {
+        const opt = document.createElement('option');
+        opt.value = name;
+        opt.textContent = name;
+        nameSelect.appendChild(opt);
+    });
+};
+
+window.onQuestNameChange = function (accId, taskIndex) {
+    const cascadingId = `quest-${accId}-${taskIndex}`;
+    const catSelect = document.getElementById(`${cascadingId}-cat`);
+    const nameSelect = document.getElementById(`${cascadingId}-name`);
+    const elemSelect = document.getElementById(`${cascadingId}-elem`);
+    const catKey = catSelect?.value;
+    const nameKey = nameSelect?.value;
+
+    if (!elemSelect) return;
+
+    elemSelect.innerHTML = '<option value="">-- Hệ --</option>';
+
+    if (!catKey || !nameKey || !vatphamStructured[catKey]?.items[nameKey]) {
+        elemSelect.disabled = true;
+        return;
+    }
+
+    elemSelect.disabled = false;
+    vatphamStructured[catKey].items[nameKey].forEach(elem => {
+        const opt = document.createElement('option');
+        opt.value = elem;
+        opt.textContent = elem;
+        elemSelect.appendChild(opt);
+    });
+};
+
+window.selectCascadingQuest = function (accId, taskIndex) {
+    const cascadingId = `quest-${accId}-${taskIndex}`;
+    const nameSelect = document.getElementById(`${cascadingId}-name`);
+    const elemSelect = document.getElementById(`${cascadingId}-elem`);
+
+    const nameKey = nameSelect?.value;
+    const elem = elemSelect?.value;
+
+    if (!nameKey || !elem) return;
+
+    // Reconstruct full item name
+    const nameMatch = nameKey.match(/^(.+?)\s*\((\d+)\)$/);
+    if (!nameMatch) return;
+    const fullName = `${nameMatch[1]} - ${elem} (${nameMatch[2]})`;
+
+    // Find index in task.children
+    const acc = state.accounts.find(a => a.id === accId);
+    if (!acc) return;
+    const task = acc.tasks[taskIndex];
+    if (!task) return;
+
+    const childIndex = task.children.findIndex(child => child.title === fullName);
+    if (childIndex !== -1) {
+        window.selectQuest(accId, taskIndex, childIndex);
+    }
 };
 
 window.saveSilver = function (accId, input) {
@@ -741,7 +820,6 @@ function buildVatphamStructure() {
     const categoryMap = {
         'Giới Chỉ': 'Nhẫn',
         'Hạng Liên': 'Dây chuyền (nữ)',
-        'Hạng Liêm': 'Dây chuyền (nữ)',
         'Hộ Thân Phù': 'Dây chuyền (nam)',
         'Ngọc Bội': 'Ngọc bội (nam)',
         'Hương Nang': 'Ngọc bội (nữ)'
@@ -1226,31 +1304,96 @@ function renderDetail(accId) {
         if (task.layout === 'inline') body.classList.add('inline-tasks');
 
         if (task.selectionType === 'radio') {
-            // Dropdown style for Dã Tẩu
-            const select = document.createElement('select');
-            select.className = 'task-dropdown';
+            // Check if this is "Dã Tẩu - Vật Phẩm" for cascading dropdown
+            const isVatPhamQuest = task.title === 'Dã Tẩu - Vật Phẩm';
 
-            // Placeholder option
-            const defaultOpt = document.createElement('option');
-            defaultOpt.value = "";
-            defaultOpt.text = "-- Chọn nhiệm vụ --";
-            defaultOpt.selected = (task.selectedIndex === null || task.selectedIndex === undefined);
-            select.appendChild(defaultOpt);
+            if (isVatPhamQuest) {
+                // Cascading dropdown for Vật Phẩm
+                const cascadingId = `quest-${acc.id}-${tIndex}`;
+                const cascadingDiv = document.createElement('div');
+                cascadingDiv.className = 'quest-cascading-row';
+                cascadingDiv.innerHTML = `
+                    <select id="${cascadingId}-cat" class="quest-cascading-select" onchange="onQuestCatChange(${acc.id}, ${tIndex})">
+                        <option value="">-- Loại --</option>
+                    </select>
+                    <select id="${cascadingId}-name" class="quest-cascading-select" disabled onchange="onQuestNameChange(${acc.id}, ${tIndex})">
+                        <option value="">-- Tên --</option>
+                    </select>
+                    <select id="${cascadingId}-elem" class="quest-cascading-select" disabled onchange="selectCascadingQuest(${acc.id}, ${tIndex})">
+                        <option value="">-- Hệ --</option>
+                    </select>
+                `;
+                body.appendChild(cascadingDiv);
 
-            task.children.forEach((child, cIndex) => {
-                const opt = document.createElement('option');
-                opt.value = cIndex;
-                opt.text = child.title;
-                opt.selected = (task.selectedIndex === cIndex);
-                select.appendChild(opt);
-            });
+                // Populate category dropdown
+                const catSelect = cascadingDiv.querySelector(`#${cascadingId}-cat`);
+                Object.entries(vatphamStructured).forEach(([key, cat]) => {
+                    const opt = document.createElement('option');
+                    opt.value = key;
+                    opt.textContent = cat.displayName;
+                    catSelect.appendChild(opt);
+                });
 
-            select.onchange = (e) => {
-                const val = e.target.value;
-                if (val === "") window.selectQuest(acc.id, tIndex, null); // Clear
-                else window.selectQuest(acc.id, tIndex, parseInt(val));
-            };
-            body.appendChild(select);
+                // If there's a selected quest, try to pre-populate cascading dropdowns
+                if (task.selectedIndex !== null && task.selectedIndex !== undefined) {
+                    const selectedChild = task.children[task.selectedIndex];
+                    if (selectedChild) {
+                        // Try to parse selected item and pre-fill cascading
+                        const match = selectedChild.title.match(/^(.+?)\s*-\s*(Kim|Thủy|Mộc|Hỏa|Thổ)\s*\((\d+)\)$/);
+                        if (match) {
+                            const [, baseName, element, level] = match;
+                            const baseNameTrimmed = baseName.trim();
+                            const nameWithLevel = `${baseNameTrimmed} (${level})`;
+
+                            // Find category
+                            for (const [catKey, catData] of Object.entries(vatphamStructured)) {
+                                if (catData.items[nameWithLevel]) {
+                                    catSelect.value = catKey;
+                                    window.onQuestCatChange(acc.id, tIndex);
+                                    setTimeout(() => {
+                                        const nameSelect = document.getElementById(`${cascadingId}-name`);
+                                        if (nameSelect) {
+                                            nameSelect.value = nameWithLevel;
+                                            window.onQuestNameChange(acc.id, tIndex);
+                                            setTimeout(() => {
+                                                const elemSelect = document.getElementById(`${cascadingId}-elem`);
+                                                if (elemSelect) elemSelect.value = element;
+                                            }, 0);
+                                        }
+                                    }, 0);
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                }
+            } else {
+                // Standard dropdown for other Dã Tẩu quests
+                const select = document.createElement('select');
+                select.className = 'task-dropdown';
+
+                // Placeholder option
+                const defaultOpt = document.createElement('option');
+                defaultOpt.value = "";
+                defaultOpt.text = "-- Chọn nhiệm vụ --";
+                defaultOpt.selected = (task.selectedIndex === null || task.selectedIndex === undefined);
+                select.appendChild(defaultOpt);
+
+                task.children.forEach((child, cIndex) => {
+                    const opt = document.createElement('option');
+                    opt.value = cIndex;
+                    opt.text = child.title;
+                    opt.selected = (task.selectedIndex === cIndex);
+                    select.appendChild(opt);
+                });
+
+                select.onchange = (e) => {
+                    const val = e.target.value;
+                    if (val === "") window.selectQuest(acc.id, tIndex, null);
+                    else window.selectQuest(acc.id, tIndex, parseInt(val));
+                };
+                body.appendChild(select);
+            }
 
             // Show match info if this quest has a selected item matching another character's inventory
             if (task.selectedIndex !== null && task.selectedIndex !== undefined) {
@@ -1267,8 +1410,6 @@ function renderDetail(accId) {
                         }).join(', ');
                         matchDiv.innerHTML = `🎯 ${owners} có vật phẩm này`;
                         body.appendChild(matchDiv);
-                        // Also highlight the dropdown
-                        select.classList.add('quest-dropdown-matched');
                     }
                 }
             }
